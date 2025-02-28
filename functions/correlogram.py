@@ -3,8 +3,8 @@ import numpy as np
 def correlogram(t1, t2=None, binsize=.001, limit=.02, auto=False,
                 density=False):
     """Return crosscorrelogram of two spike trains.
-    Essentially, this algorithm subtracts each spike time in t1
-    from all of t2 and bins the results with np.histogram, though
+    Essentially, this algorithm subtracts each spike time in ⁠ t1 ⁠
+    from all of ⁠ t2 ⁠ and bins the results with np.histogram, though
     several tweaks were made for efficiency.
     Originally authored by Chris Rodger, copied from OpenElectrophy, licenced
     with CeCill-B. Examples and testing written by exana team.

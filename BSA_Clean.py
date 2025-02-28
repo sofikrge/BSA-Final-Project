@@ -12,6 +12,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import glob
 import sys
+from functions import *
 
 #%% 
 """
@@ -57,12 +58,38 @@ Now, we'll extract the spike data
 
 """
 
-#%% Extract spike data
-neurons_data = data['neurons']
-
+#%% Extract spike data (only the third element of each neuron list)
+neurons_data = [np.sort(neuron[2]) for neuron in data["neurons"]]
 #%% 
 """
 ===========================================================
 Step 2: Data exclusion
 ===========================================================
 """ 
+#%% Inspect correlograms to identify bad sorting of neurons
+# Run correlogram on all unique neuron pairs
+# Store results in a dictionary
+correlogram_results = {}
+num_neurons = len(neurons_data)
+print(f"Total neurons: {num_neurons}")
+
+# Run correlogram on all neuron pairs
+for i in range(num_neurons):
+    for j in range(i, num_neurons):  # Avoid redundant calculations
+        t1 = neurons_data[i]
+        t2 = neurons_data[j]
+
+        auto = i == j  # Set auto=True if computing for the same neuron
+        counts, bins = correlogram(t1, t2, binsize=0.001, limit=0.02, auto=auto)
+
+        # Store the results
+        correlogram_results[(i, j)] = {"counts": counts, "bins": bins}
+
+        # Print progress
+        print(f"Computed correlogram for neuron {i} and neuron {j}")
+
+# %%Plot the correlogram results
+plot_correlogram_matrix(correlogram_results, neurons_data)
+
+
+# %%

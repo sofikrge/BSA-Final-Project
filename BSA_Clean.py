@@ -12,7 +12,8 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import glob
 import sys
-from functions import *
+from functions.plot_correlogram_matrix import plot_correlogram_matrix
+from functions.correlogram import correlogram
 
 #%% 
 """

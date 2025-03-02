@@ -241,15 +241,20 @@ def correlogram(t1, t2=None, binsize=.001, limit=.02, auto=False,
 
     return count, bins[1:]
 def plot_correlogram_matrix(neurons_data, binsize, dataset_name, limit=0.02):
+    # Sofia modified this such that we only compute the lower triangle and the upper one is simply mirrored
+    
     num_neurons = len(neurons_data)
     fig, axes = plt.subplots(num_neurons, num_neurons, figsize=(num_neurons * 3, num_neurons * 3))
     
+    print(f"Starting correlogram matrix for {dataset_name}")
+    
     for i, neuron_i in enumerate(neurons_data):
-        t1 = neuron_i[:3][2]  # Extract spike times
-
-        for j, neuron_j in enumerate(neurons_data):
+        for j, neuron_j in enumerate(neurons_data[:i+1]):  # Compute only for i >= j
+            t1 = neuron_i[:3][2]  # Extract spike times
             t2 = neuron_j[:3][2]  # Extract spike times
 
+            print(f"Processing Neuron {i+1} vs Neuron {j+1}...")
+            
             # Compute correlogram
             counts, bins = correlogram(t1, t2=t2, binsize=binsize, limit=limit, auto=(i == j), density=False)
 
@@ -259,12 +264,23 @@ def plot_correlogram_matrix(neurons_data, binsize, dataset_name, limit=0.02):
 
             bin_centers = (bins[:-1] + bins[1:]) / 2
 
+            # Set color dynamically
+            color = 'g' if i == j else 'b'  # Green for auto-correlation, blue for others
+            
             # Plot in the matrix
             ax = axes[i, j] if num_neurons > 1 else axes
-            ax.bar(bin_centers, counts, width=np.diff(bins), align='center', color='b', alpha=0.7, edgecolor='k')
+            ax.bar(bin_centers, counts, width=np.diff(bins), align='center', color=color, alpha=0.7, edgecolor='k')
             ax.set_xlim(-limit, limit)
             ax.set_xticks([])
             ax.set_yticks([])
+            
+            # Mirror results
+            if i != j:
+                ax_mirror = axes[j, i] if num_neurons > 1 else axes
+                ax_mirror.bar(bin_centers, counts, width=np.diff(bins), align='center', color=color, alpha=0.7, edgecolor='k')
+                ax_mirror.set_xlim(-limit, limit)
+                ax_mirror.set_xticks([])
+                ax_mirror.set_yticks([])
 
             # Labels for the first row and first column
             if i == 0:
@@ -309,6 +325,4 @@ What if we do find a pause in cross-correlograms?
 - maybe also check adaptation over time as that might explain that
 """
 
-
-
-# %%
+#%% Let's 

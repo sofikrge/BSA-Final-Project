@@ -340,6 +340,7 @@ What if we do find a pause in cross-correlograms?
 
 #%% Let's check out the data we have with some descriptive measures at crucial time points: the Pre-CTA and Post-CTA window
 """
+TODO
 - Mean spiking rate
 - Variance
 - Coefficient of Variation (CV)
@@ -365,7 +366,6 @@ What if we do find a pause in cross-correlograms?
     might get very noisy at the end because there are only few neurons that spike with such long ISI
 
 """
-
 #%% Define time windows for analysis & extract spike times
 # List of already defined file paths
 file_paths = [file_1, file_2, file_3, file_4]
@@ -385,7 +385,7 @@ def get_spike_times(data):
     spike_times_list = [np.array(neuron[2]) for neuron in neurons_data if len(neuron) > 2]  # Extract spike times
     return spike_times_list
 
-# Compute firing rates within a given time window
+#%% Compute firing rates and sds of firing rates within a given time window per file + plot
 def compute_firing_rates(spike_times_list, time_window):
     start, end = time_window
     duration = end - start
@@ -399,9 +399,37 @@ def compute_firing_rates(spike_times_list, time_window):
     
     return firing_rates
 
+# Function to compute standard deviation of firing rates in given time window
+def compute_firing_rate_std(spike_times_list, time_window, bin_width=0.05):
+    start, end = time_window
+    std_list = []
+    
+    # Define bin edges for the entire window
+    bins = np.arange(start, end + bin_width, bin_width)
+    
+    for spikes in spike_times_list:
+        # Select spikes that fall within the time window
+        spikes_in_window = spikes[(spikes >= start) & (spikes <= end)]
+        
+        # Compute spike counts in each bin
+        counts, _ = np.histogram(spikes_in_window, bins=bins)
+        
+        # Convert counts to rates (spikes per second)
+        rates = counts / bin_width
+        
+        # Compute standard deviation of the binned rates
+        std_rate = np.std(rates)
+        std_list.append(std_rate)
+    
+    return np.array(std_list)
+
 # Create a single figure wih 2x2 subplots
 fig, axes = plt.subplots(2, 2, figsize=(12, 10))
 axes = axes.flatten()  # Flatten for easy iteration
+
+# Initialize lists to store min and max values for scaling
+y_min, y_max = float('inf'), -float('inf')  # To store the global min and max for y-axis (firing rates)
+x_min, x_max = 0, 3  # Since x-ticks are fixed as [1, 2, 3] for Non-Stimuli, Pre-CTA, Post-CTA
 
 # Loop through each file and process data
 for i, (file_path, file_name) in enumerate(zip(file_paths, file_names)):
@@ -429,15 +457,17 @@ for i, (file_path, file_name) in enumerate(zip(file_paths, file_names)):
         pre_CTA_rates = compute_firing_rates(spike_times_list, pre_CTA_time)
         post_CTA_rates = compute_firing_rates(spike_times_list, post_CTA_time)
 
-        # Plot on the assigned subplot
+        # Compute standard deviation of firing rates for each window
+        non_stimuli_std = compute_firing_rate_std(spike_times_list, non_stimuli_time)
+        pre_CTA_std = compute_firing_rate_std(spike_times_list, pre_CTA_time)
+        post_CTA_std = compute_firing_rate_std(spike_times_list, post_CTA_time)
+
+        # Boxplot
         ax = axes[i]
         ax.boxplot(
             [non_stimuli_rates, pre_CTA_rates, post_CTA_rates], 
             tick_labels=["Non-Stimuli", "Pre-CTA", "Post-CTA"]
         )
-        ax.set_ylabel("Firing Rate (Hz)")
-        ax.set_title(f"Firing Rates - {file_name}")
-        ax.grid(axis='y', linestyle='--', alpha=0.6)
         
         """
         Matplotlib automatically calculates
@@ -447,9 +477,40 @@ for i, (file_path, file_name) in enumerate(zip(file_paths, file_names)):
         75th percentile
         outliers: beyond 1.5xIQR
         """
+        
+        # Add bar plot for standard deviation on top of boxplot
+        ax.bar([1, 2, 3], 
+               [np.mean(non_stimuli_std), np.mean(pre_CTA_std), np.mean(post_CTA_std)], 
+               width=0.3, color='orange', alpha=0.7, label="Std Dev")
+
+        ax.set_ylabel("Firing Rate (Hz)")
+        ax.set_title(f"Firing Rates - {file_name}")
+        ax.grid(axis='y', linestyle='--', alpha=0.6)
+        
+        # Add the legend to explain the orange bars
+        ax.legend(loc='upper right')  # You can adjust 'loc' as needed (e.g., 'upper right', 'upper left', etc.)
+        
+        # Update global y-axis scaling
+        y_min = min(y_min, np.min([non_stimuli_rates, pre_CTA_rates, post_CTA_rates]))
+        y_max = max(y_max, np.max([non_stimuli_rates, pre_CTA_rates, post_CTA_rates]))
+        
+        # Display overall summary statistics for this file
+        print(f"Summary statistics for {file_name}:")
+        print("Mean non-stimuli firing rate:", np.mean(non_stimuli_rates))
+        print("Standard deviation of non-stimuli firing rates (across neurons):", np.std(non_stimuli_rates))
+        print("Mean pre-CTA firing rate:", np.mean(pre_CTA_rates))
+        print("Standard deviation of pre-CTA firing rates (across neurons):", np.std(pre_CTA_rates))
+        print("Mean post-CTA firing rate:", np.mean(post_CTA_rates))
+        print("Standard deviation of post-CTA firing rates (across neurons):", np.std(post_CTA_rates))
+        print("-" * 50)
 
     except Exception as e:
         print(f"Error processing {file_path}: {e}")
+
+# Set uniform axis scaling across all subplots
+for ax in axes:
+    ax.set_ylim(y_min - 1, y_max + 1)  # Add a small margin for better visualization
+    ax.set_xlim(x_min - 0.5, x_max + 0.5)  # Slight margin for x-axis to fit the bars
 
 # Adjust layout and save the combined figure
 fig.suptitle("Firing Rates Across Time Windows for Each Recording", fontsize=14)
@@ -459,5 +520,4 @@ plt.savefig(combined_figure_path, dpi=300, bbox_inches="tight")
 plt.close()
 
 print(f"Combined plot saved: {combined_figure_path}")
-
-# %%Mean spiking rate
+# %%

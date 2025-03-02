@@ -315,7 +315,7 @@ def correlogram(t1, t2=None, binsize=.001, limit=.02, auto=False,
         count = count[::-1]
 
     return count, bins[1:]
-def plot_correlogram_matrix(neurons_data, binsize, limit=0.02):
+def plot_correlogram_matrix(neurons_data, binsize, dataset_name, limit=0.02):
     num_neurons = len(neurons_data)
     fig, axes = plt.subplots(num_neurons, num_neurons, figsize=(num_neurons * 3, num_neurons * 3))
     
@@ -361,10 +361,10 @@ def plot_correlogram_matrix(neurons_data, binsize, limit=0.02):
 
     print(f"Correlogram saved: {save_path}")  # Confirm save location
 #%% Plot all 4 correlograms using their respective bin sizes
-plot_correlogram_matrix(ctrl_rat_1_neurons_data, binsize=optimal_bin_sizes["ctr_rat_1"], title="Correlogram - Ctrl Rat 1")
-plot_correlogram_matrix(ctrl_rat_2_neurons_data, binsize=optimal_bin_sizes["ctr_rat_2"], title="Correlogram - Ctrl Rat 2")
-plot_correlogram_matrix(exp_rat_2_neurons_data, binsize=optimal_bin_sizes["exp_rat_2"], title="Correlogram - Exp Rat 2")
-plot_correlogram_matrix(exp_rat_3_neurons_data, binsize=optimal_bin_sizes["exp_rat_3"], title="Correlogram - Exp Rat 3")
+plot_correlogram_matrix(ctrl_rat_1_neurons_data, binsize=optimal_bin_sizes["ctrl_rat_1"], dataset_name="ctr_rat_1")
+plot_correlogram_matrix(ctrl_rat_2_neurons_data, binsize=optimal_bin_sizes["ctrl_rat_2"], dataset_name="ctr_rat_2")
+plot_correlogram_matrix(exp_rat_2_neurons_data, binsize=optimal_bin_sizes["exp_rat_2"], dataset_name="exp_rat_2")
+plot_correlogram_matrix(exp_rat_3_neurons_data, binsize=optimal_bin_sizes["exp_rat_3"], dataset_name="exp_rat_3")
 
 """
 

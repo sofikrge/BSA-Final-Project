@@ -21,6 +21,7 @@ from functions.correlogram import correlogram
 Step 1: Inspect data
 ===========================================================
 """
+
 #%% Inspect data to check if it matches Doc
 # Define the correct path to your file
 file_path = os.path.join("data", "raw", "exp rat 2.pkl")
@@ -67,6 +68,7 @@ neurons_data = [np.sort(neuron[2]) for neuron in data["neurons"]]
 Step 2: Data exclusion
 ===========================================================
 """ 
+
 #%% Inspect correlograms to identify bad sorting of neurons
 # Run correlogram on all unique neuron pairs
 # Store results in a dictionary
@@ -74,7 +76,7 @@ correlogram_results = {}
 num_neurons = len(neurons_data)
 print(f"Total neurons: {num_neurons}")
 
-# Run correlogram on all neuron pairs
+# Run correlogram on all UNIQUE neuron pairs
 for i in range(num_neurons):
     for j in range(i, num_neurons):  # Avoid redundant calculations
         t1 = neurons_data[i]
@@ -89,8 +91,18 @@ for i in range(num_neurons):
         # Print progress
         print(f"Computed correlogram for neuron {i} and neuron {j}")
 
-# %%Plot the correlogram results
-plot_correlogram_matrix(correlogram_results, neurons_data)
+#%% Plot the correlogram results + save under figures
+# Get the base directory of the script
+base_dir = os.path.dirname(os.path.abspath(__file__))
 
+# Define the relative path to the figures folder
+output_dir = os.path.join(base_dir, 'reports', 'figures')
+
+# Call the function to plot and save the figure
+plot_correlogram_matrix(correlogram_results, output_dir=output_dir)
+
+# %%
+# Print all keys in correlogram_results to debug the issue
+print(correlogram_results.keys())
 
 # %%

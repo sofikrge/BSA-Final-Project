@@ -336,9 +336,14 @@ Features to note
 What if we do find a pause in cross-correlograms?
 - inspect subclusters, exploit fact that they are not symmetric and find out when they fire
 - maybe also check adaptation over time as that might explain that
+""" 
+#%%
 """
-
-#%% Let's check out the data we have with some descriptive measures at crucial time points: the Pre-CTA and Post-CTA window
+===========================================================
+Step 3: Descriptive metrics
+===========================================================
+"""
+# %%Let's check out the data we have with some descriptive measures at crucial time points: the Pre-CTA and Post-CTA window
 """
 TODO
 - Mean spiking rate
@@ -364,8 +369,8 @@ TODO
     focuses on risk of an event happening regardless of history
     basically rate at which survivor function decays
     might get very noisy at the end because there are only few neurons that spike with such long ISI
-
 """
+
 #%% Define time windows for analysis & extract spike times
 # List of already defined file paths
 file_paths = [file_1, file_2, file_3, file_4]

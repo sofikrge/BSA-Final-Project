@@ -331,9 +331,133 @@ Features to note
 - how flat is it?
 - does it show a pause in the middle? we expect one for auto-correlograms but not for cross-correlograms
 
+# TODO Discuss with Denise
+
 What if we do find a pause in cross-correlograms?
 - inspect subclusters, exploit fact that they are not symmetric and find out when they fire
 - maybe also check adaptation over time as that might explain that
 """
 
-#%% Let's 
+#%% Let's check out the data we have with some descriptive measures at crucial time points: the Pre-CTA and Post-CTA window
+"""
+- Mean spiking rate
+- Variance
+- Coefficient of Variation (CV)
+    1 for Poisson, because both mean and variance = lambda (rate parameter of process so average number of events in a given time interval)
+    Shows how random vs regular activity
+    When >1 then neurons are bursty, variability higher than expected
+    When <1 usually dealing with regular neurons 
+- Fano Factor
+    F >1 indicates overdispersion so larger variance than mean, could be clustering or correlation among events
+    F<1 underdispersion, more regular or uniform distribution of events than what a Poisson assumes
+    If Fano factor approaches Cv^2 over long time intervals, it means that the next spike depends on the previous one
+- ISI
+    What is the chance for a spike t seconds after the previous
+- TIH
+    Histogram of time difference between adjacent spikes (so of ISI)
+- Survivor function
+    probability neuron stays quiet for time t after previous spike, initial value is 1 and decreases to 0 as t approaches infinity 
+- Hazard function
+    independent probability to fire at any single point
+    mainly used to detect burst activity and refractory period
+    focuses on risk of an event happening regardless of history
+    basically rate at which survivor function decays
+    might get very noisy at the end because there are only few neurons that spike with such long ISI
+
+"""
+
+#%% Define time windows for analysis & extract spike times
+# List of already defined file paths
+file_paths = [file_1, file_2, file_3, file_4]
+file_names = [os.path.basename(path).replace(".pkl", "") for path in file_paths]
+
+# Ensure figure save directory exists
+figures_dir = os.path.join("reports", "figures")
+os.makedirs(figures_dir, exist_ok=True)
+
+# Extract spike times
+def get_spike_times(data):
+    """
+    Extracts spike times from the 'neurons' key in data.
+    Assumes each neuron entry is a list/tuple where index [2] holds spike times.
+    """
+    neurons_data = data.get("neurons", [])  # Extract neurons list
+    spike_times_list = [np.array(neuron[2]) for neuron in neurons_data if len(neuron) > 2]  # Extract spike times
+    return spike_times_list
+
+# Compute firing rates within a given time window
+def compute_firing_rates(spike_times_list, time_window):
+    start, end = time_window
+    duration = end - start
+    if duration <= 0:
+        return np.zeros(len(spike_times_list))  # Avoid division by zero
+
+    firing_rates = np.array([
+        np.sum((times >= start) & (times <= end)) / duration if len(times) > 0 else 0
+        for times in spike_times_list
+    ])
+    
+    return firing_rates
+
+# Create a single figure wih 2x2 subplots
+fig, axes = plt.subplots(2, 2, figsize=(12, 10))
+axes = axes.flatten()  # Flatten for easy iteration
+
+# Loop through each file and process data
+for i, (file_path, file_name) in enumerate(zip(file_paths, file_names)):
+    try:
+        with open(file_path, 'rb') as f:
+            data = pickle.load(f)  # Load .pkl file
+        
+        # Extract necessary time points
+        sacc_start = data.get("sacc drinking session start time", 0)
+        cta_time = data.get("CTA injection time", 0)
+
+        # Extract spike times correctly from `neurons`
+        spike_times_list = get_spike_times(data)
+
+        # Find max spike time (ignoring empty neurons)
+        max_time = max((np.max(times) for times in spike_times_list if len(times) > 0), default=0)
+
+        # Define time windows
+        non_stimuli_time = (0, sacc_start)
+        pre_CTA_time = (sacc_start, cta_time)
+        post_CTA_time = (cta_time + 3 * 3600, max_time)
+
+        # Compute firing rates for each window
+        non_stimuli_rates = compute_firing_rates(spike_times_list, non_stimuli_time)
+        pre_CTA_rates = compute_firing_rates(spike_times_list, pre_CTA_time)
+        post_CTA_rates = compute_firing_rates(spike_times_list, post_CTA_time)
+
+        # Plot on the assigned subplot
+        ax = axes[i]
+        ax.boxplot(
+            [non_stimuli_rates, pre_CTA_rates, post_CTA_rates], 
+            tick_labels=["Non-Stimuli", "Pre-CTA", "Post-CTA"]
+        )
+        ax.set_ylabel("Firing Rate (Hz)")
+        ax.set_title(f"Firing Rates - {file_name}")
+        ax.grid(axis='y', linestyle='--', alpha=0.6)
+        
+        """
+        Matplotlib automatically calculates
+        min and max
+        25th percentile
+        median
+        75th percentile
+        outliers: beyond 1.5xIQR
+        """
+
+    except Exception as e:
+        print(f"Error processing {file_path}: {e}")
+
+# Adjust layout and save the combined figure
+fig.suptitle("Firing Rates Across Time Windows for Each Recording", fontsize=14)
+fig.tight_layout(rect=[0, 0, 1, 0.96])  # Adjust spacing
+combined_figure_path = os.path.join(figures_dir, "firing_rates_combined.png")
+plt.savefig(combined_figure_path, dpi=300, bbox_inches="tight")
+plt.close()
+
+print(f"Combined plot saved: {combined_figure_path}")
+
+# %%Mean spiking rate

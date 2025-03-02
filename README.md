@@ -30,7 +30,7 @@ Our final project for BSA :-)
     │
     ├── __init__.py             <- Init file for inheritance
     │
-    ├── calculateidalbins.py  <- 
+    ├── calculateidealbinsize.py  <- 
 ```
 
 --------

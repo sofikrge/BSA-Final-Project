@@ -4,21 +4,20 @@
     <img src="https://img.shields.io/badge/CCDS-Project%20template-328F97?logo=cookiecutter" />
 </a>
 
-Our final project for BSA
+Our final project for BSA :-)
 
 ## Project Organization
 
 ```
-├── LICENSE            <- Open-source license if one is chosen
 ├── Makefile           <- Makefile with convenience commands like `make data` or `make train`
 ├── README.md          <- The top-level README for developers using this project.
 ├── data
-│   ├── processed      <- The final, canonical data sets for modeling.
+│   ├── processed      <- The final, data sets after exclusions.
 │   └── raw            <- The original, immutable data dump.
 │
 ├── docs               <- A default mkdocs project; see www.mkdocs.org for details
 ├── pyproject.toml     <- Project configuration file with package metadata for 
-│                         bsa_final_project_dj_&_sk and configuration for tools like black
+│                         bsa_final_project_dj_&_sk and configuration for 
 ├── reports            <- Generated analysis as HTML, PDF, LaTeX, etc.
 │   └── figures        <- Generated graphics and figures to be used in reporting
 │

@@ -34,5 +34,3 @@ Our final project for BSA :-)
 ```
 
 --------
-
-# BSA-Final-Project

@@ -1,35 +1,38 @@
 import numpy as np
 
-def compute_optimal_bin_size(neuron_spike_times, total_time, n_trials):
+def compute_optimal_bin_size(T, spike_counts, n_trials, delta_values):
     """
-    Compute the optimal bin size Δ* for a single neuron using analytical differentiation.
+    Computes the optimal bin size that minimizes C_n(Δ)
     
     Parameters:
-    - neuron_spike_times: List of spike times from one neuron.
-    - total_time: Total observation period T.
-    - n_trials: Number of trials.
-
+    T (float): Total observation period
+    spike_counts (list): List of spike counts in each bin
+    n_trials (int): Number of trials
+    delta_values (list): List of candidate bin widths
+    
     Returns:
-    - delta_opt: Optimal bin size Δ*.
+    float: Optimal bin width Δ*
     """
-    N = len(neuron_spike_times)  # Number of spike events
-    if N < 2:
-        return None  # Avoid division errors if too few spikes
+    N = len(spike_counts)
+    k_bar = np.mean(spike_counts)
+    v = np.mean((spike_counts - k_bar) ** 2)
     
-    # Divide into N bins and count spikes
-    bin_edges = np.linspace(0, total_time, N + 1)
-    k_i, _ = np.histogram(neuron_spike_times, bins=bin_edges)
+    optimal_delta = None
+    min_Cn = float('inf')
     
-    # Compute mean spike count per bin (k̄) and variance (v)
-    k_bar = np.mean(k_i)
-    v = np.var(k_i, ddof=0)  # Population variance
+    for delta in delta_values:
+        Cn = (2 * k_bar - v) / ((n_trials * delta) ** 2)
+        if Cn < min_Cn:
+            min_Cn = Cn
+            optimal_delta = delta
+    
+    return optimal_delta
 
-    # Compute optimal bin size using Δ* = (2(2k̄ - v) / n²)^(1/3)
-    numerator = 2 * (2 * k_bar - v)
-    denominator = n_trials ** 2
-    
-    if numerator <= 0:
-        return None  # Avoid complex numbers if variance dominates
+# Example Usage
+T = 100  # Total observation period
+spike_counts = np.random.poisson(lam=5, size=50)  # Simulated spike count data
+n_trials = 10  # Number of trials
+delta_values = np.linspace(0.1, 5, 50)  # Range of possible bin widths
 
-    delta_opt = (numerator / denominator) ** (1/3)
-    return delta_opt
+optimal_delta = compute_optimal_bin_size(T, spike_counts, n_trials, delta_values)
+print(f"Optimal bin width Δ*: {optimal_delta}")

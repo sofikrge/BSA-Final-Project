@@ -101,6 +101,17 @@ with open(file_4, "rb") as f:
 # Check if data is loaded properly
 print(ctrl_rat_1_neurons_data[:5])  # Print first 5 neurons of ctr_rat_1
 
+# Print the number of neurons for each dataset
+""" 
+print("Number of neurons in ctrl_rat_1:", len(ctrl_rat_1_neurons_data))
+print("Number of neurons in ctrl_rat_2:", len(ctrl_rat_2_neurons_data))
+print("Number of neurons in exp_rat_2:", len(exp_rat_2_neurons_data))
+print("Number of neurons in exp_rat_3:", len(exp_rat_3_neurons_data)) 
+"""
+"""
+Now we know we have 27 neurons recorded for ctr rat 1, 4 for ctr rat 2, 13 for exp rat 2 and 25 for exp rat 3
+"""
+
 #%% Before we work with correlograms, we want to check which bin size is the most optimal one per dataset
 """
 With some research, we found out about the Cn(Delta) function which quantifies how well a particular bin size captures spike train information.
@@ -113,7 +124,7 @@ The optimal bin size achieves the best balance between these two extremes.
 
 We computed Cn(Delta) based on the formula from this video: https://youtu.be/VJGtyeR87R4?si=wsTlEeRorVug9kJC
 
-TODO (Sofia): RUN IT
+TODO (Sofia): Create it cause what we have rn is not functional :/
 The calculations showed that ___ is the optimal bin size for the dataset ___.
 (For details look at functions/calculateidealbinsize.py)
 

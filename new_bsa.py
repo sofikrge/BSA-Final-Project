@@ -73,6 +73,15 @@ treated as one.
 For that, we will plot the correlogram of each data set and 
 for now focus on the auto-correlograms.
 
+TODO
+We have the following gameplan:
+- only look at unstimulated phase
+- 0.5ms bin size as that is the absolute refractory period -> one spike is happening so look at 2 bins
+- no immediate peak next to absolute refractory period
+- 2ms relative refractory period -> look at 4 bins, there should be close to none as we are looking at the unstimulated 
+phase and a very strong stimulus would be needed for a new spike
+- chose a conservative criterion because our biggest enemy too high is data loss
+
 """ 
 #%% Extract spiking data from each pkl file and save it as its own variable
 
@@ -131,7 +140,7 @@ The calculations showed that ___ is the optimal bin size for the dataset ___.
 """
 
 #%% Correlogram + plotting correlogram functions
-def correlogram(t1, t2=None, binsize=.001, limit=.02, auto=False,
+def correlogram(t1, t2=None, binsize=.0005, limit=.02, auto=False,
                 density=False):
     """Return crosscorrelogram of two spike trains.
     Essentially, this algorithm subtracts each spike time in t1
@@ -276,7 +285,7 @@ def plot_correlogram_matrix(neurons_data, binsize, dataset_name, limit=0.02):
             bin_centers = (bins[:-1] + bins[1:]) / 2
 
             # Set color dynamically
-            color = 'g' if i == j else 'b'  # Green for auto-correlation, blue for others
+            color = '#AAF0D1' if i == j else '#C9A0DC'  # Green for auto-correlation, purple for others
             
             # Plot in the matrix
             ax = axes[i, j] if num_neurons > 1 else axes
@@ -288,7 +297,7 @@ def plot_correlogram_matrix(neurons_data, binsize, dataset_name, limit=0.02):
             # Mirror results
             if i != j:
                 ax_mirror = axes[j, i] if num_neurons > 1 else axes
-                ax_mirror.bar(bin_centers, counts, width=np.diff(bins), align='center', color=color, alpha=0.7, edgecolor='k')
+                ax_mirror.bar(-bin_centers, counts, width=np.diff(bins), align='center', color=color, alpha=0.7, edgecolor='k')
                 ax_mirror.set_xlim(-limit, limit)
                 ax_mirror.set_xticks([])
                 ax_mirror.set_yticks([])
@@ -314,10 +323,10 @@ def plot_correlogram_matrix(neurons_data, binsize, dataset_name, limit=0.02):
     print(f"Correlogram saved: {save_path}")  # Confirm save location
 #%% Define optimal bin sizes for each dataset
 optimal_bin_sizes = {
-    "ctrl_rat_1": 0.001,  # Replace with the actual optimal bin size
-    "ctrl_rat_2": 0.001,  # Replace with the actual optimal bin size
-    "exp_rat_2": 0.001,   # Replace with the actual optimal bin size
-    "exp_rat_3": 0.001    # Replace with the actual optimal bin size
+    "ctrl_rat_1": 0.0005,  # Replace with the actual optimal bin size
+    "ctrl_rat_2": 0.0005,  # Replace with the actual optimal bin size
+    "exp_rat_2": 0.0005,   # Replace with the actual optimal bin size
+    "exp_rat_3": 0.0005    # Replace with the actual optimal bin size
 }
 #%% Plot all 4 correlograms using their respective bin sizes
 plot_correlogram_matrix(ctrl_rat_1_neurons_data, binsize=optimal_bin_sizes["ctrl_rat_1"], dataset_name="ctrl_rat_1")

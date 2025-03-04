@@ -1,10 +1,3 @@
-"""
-===========================================================
-BSA Final Assignment - Denise Jaeschke & Sofia Karageorgiou
-===========================================================
-"""
-
-#%% Imports
 import pickle
 import re
 import numpy as np
@@ -14,7 +7,19 @@ import matplotlib.pyplot as plt
 import glob
 import sys
 
-#%%
+#%% 
+"""
+===========================================================
+BSA Final Assignment - Denise Jaeschke & Sofia Karageorgiou
+===========================================================
+"""
+
+# Import all of our helper functions which can be found under the functions folder
+from functions.load_dataset import load_dataset
+from functions.correlogram import correlogram
+from functions.plot_correlogram_matrix import plot_correlogram_matrix
+
+#%% Step 1 Inspect data
 """
 ===========================================================
 Step 1: Inspect data
@@ -24,29 +29,23 @@ Thus, we looked at the data types, the keys of the dictionary, and the content o
 TODO (Sofia): Maybe comment this whole part out before submission? 
 
 """
-#%% Inspect first file
-file_path = os.path.join("data", "raw", "exp rat 2.pkl")
+#%% Inspect the data using the helper function
+base_dir = os.path.dirname(os.path.abspath(__file__))
+pkl_dir = os.path.join(base_dir, 'data', 'raw')
+file_path = os.path.join(pkl_dir, "exp rat 2.pkl")
 
-with open(file_path, "rb") as f: # inspect first file
-    data = pickle.load(f) 
+# Use the helper function to load the dataset
+data, neurons, non_stimuli_time = load_dataset(file_path)
 
-print(type(data))  # --> it is a dictionary
-print(data.keys())  # check the keys of this dictionary
-# print(data) # check out what the data looks like
+print(type(data))  # It should be a dictionary
+print(data.keys())  # Check the keys of the dictionary
 
-#%% Look at content of each key
-# 1. Event times
+# Look at content of each key
 print("Event Times:", data["event_times"].keys())
 print("Event Times:", data["event_times"])
-
-# 2. Drinking session start time and CTA injection time
 print("Saccharin drinking start time:", data["sacc drinking session start time"])
 print("CTA injection time:", data["CTA injection time"])
-
-# 3. How many neurons were recorded
 print("Number of neurons recorded:", len(data["neurons"]))
-
-# 4. Display example neuron
 print("Example neuron data:", data["neurons"][0])  # Checking the first neuron
 
 """
@@ -59,7 +58,7 @@ This matches our expectations, namely:
 Now, we'll extract the spike data
 """
 
-#%%
+#%% Step 2: Exclude Data
 """
 ===========================================================
 Step 2: Data exclusion
@@ -83,29 +82,29 @@ phase and a very strong stimulus would be needed for a new spike
 - chose a conservative criterion because our biggest enemy too high is data loss
 
 """ 
-#%% Extract spiking data from each pkl file and save it as its own variable
-
-base_dir = os.path.dirname(os.path.abspath(__file__))  # Get the current script's directory
-pkl_dir = os.path.join(base_dir, 'data', 'raw')  # Join with the 'data/raw' relative path
-
+#%% Extract data + run correlograms
+# Extract spiking data from each pkl file and save it as its own variable
 # Define file paths
 file_1 = os.path.join(pkl_dir, "ctrl rat 1.pkl")
 file_2 = os.path.join(pkl_dir, "ctrl rat 2.pkl")
 file_3 = os.path.join(pkl_dir, "exp rat 2.pkl")
 file_4 = os.path.join(pkl_dir, "exp rat 3.pkl")
 
-# Load data manually
-with open(file_1, "rb") as f:
-    ctrl_rat_1_neurons_data = pickle.load(f)["neurons"]
+# Load data using helper function we defined
+data1, ctrl_rat_1_neurons_data, non_stimuli_time_1 = load_dataset(file_1)
+data2, ctrl_rat_2_neurons_data, non_stimuli_time_2 = load_dataset(file_2)
+data3, exp_rat_2_neurons_data, non_stimuli_time_3 = load_dataset(file_3)
+data4, exp_rat_3_neurons_data, non_stimuli_time_4 = load_dataset(file_4)
 
-with open(file_2, "rb") as f:
-    ctrl_rat_2_neurons_data = pickle.load(f)["neurons"]
+# Debug print
+print(ctrl_rat_1_neurons_data[:5])  # Print first 5 neurons of ctrl_rat_1
 
-with open(file_3, "rb") as f:
-    exp_rat_2_neurons_data = pickle.load(f)["neurons"]
-
-with open(file_4, "rb") as f:
-    exp_rat_3_neurons_data = pickle.load(f)["neurons"]
+"""
+print("sacc_start_1:", sacc_start_1)
+print("sacc_start_2:", sacc_start_2)
+print("sacc_start_3:", sacc_start_3)
+print("sacc_start_4:", sacc_start_4)
+"""
 
 # Check if data is loaded properly
 print(ctrl_rat_1_neurons_data[:5])  # Print first 5 neurons of ctr_rat_1
@@ -121,7 +120,7 @@ print("Number of neurons in exp_rat_3:", len(exp_rat_3_neurons_data))
 Now we know we have 27 neurons recorded for ctr rat 1, 4 for ctr rat 2, 13 for exp rat 2 and 25 for exp rat 3
 """
 
-#%% Before we work with correlograms, we want to check which bin size is the most optimal one per dataset
+# Before we work with correlograms, we want to check which bin size is the most optimal one per dataset
 """
 With some research, we found out about the Cn(Delta) function which quantifies how well a particular bin size captures spike train information.
 Our goal is to find a delta that minimises the Cn. 
@@ -139,205 +138,27 @@ The calculations showed that ___ is the optimal bin size for the dataset ___.
 
 """
 
-#%% Correlogram + plotting correlogram functions
-def correlogram(t1, t2=None, binsize=.0005, limit=.02, auto=False,
-                density=False):
-    """Return crosscorrelogram of two spike trains.
-    Essentially, this algorithm subtracts each spike time in t1
-    from all of t2 and bins the results with np.histogram, though
-    several tweaks were made for efficiency.
-    Originally authored by Chris Rodger, copied from OpenElectrophy, licenced
-    with CeCill-B. Examples and testing written by exana team.
-
-    Parameters
-    ---------
-    t1 : np.array
-        First spiketrain, raw spike times in seconds.
-    t2 : np.array
-        Second spiketrain, raw spike times in seconds.
-    binsize : float
-        Width of each bar in histogram in seconds.
-    limit : float
-        Positive and negative extent of histogram, in seconds.
-    auto : bool
-        If True, then returns autocorrelogram of ⁠ t1 ⁠ and in
-        this case ⁠ t2 ⁠ can be None. Default is False.
-    density : bool
-        If True, then returns the probability density function.
-    See also
-    --------
-    :func:⁠ numpy.histogram ⁠ : The histogram function in use.
-
-    Returns
-    -------
-    (count, bins) : tuple
-        A tuple containing the bin right edges and the
-        count/density of spikes in each bin.
-    Note
-    ----
-    ⁠ bins ⁠ are relative to ⁠ t1 ⁠. That is, if ⁠ t1 ⁠ leads ⁠ t2 ⁠, then
-    ⁠ count ⁠ will peak in a positive time bin.
-
-    Examples
-    --------
-    >>> t1 = np.arange(0, .5, .1)
-    >>> t2 = np.arange(0.1, .6, .1)
-    >>> limit = 1
-    >>> binsize = .1
-    >>> counts, bins = correlogram(t1=t1, t2=t2, binsize=binsize,
-    ...                            limit=limit, auto=False)
-    >>> counts
-    array([0, 0, 0, 0, 0, 0, 0, 1, 2, 3, 4, 5, 4, 3, 2, 1, 0, 0, 0, 0])
-
-    The interpretation of this result is that there are 5 occurences where
-    in the bin 0 to 0.1, i.e.
-
-    # TODO fix
-    # >>> idx = np.argmax(counts)
-    # >>> '%.1f, %.1f' % (abs(bins[idx - 1]), bins[idx])
-    # '0.0, 0.1'
-
-    The correlogram algorithm is identical to, but computationally faster than
-    the histogram of differences of each timepoint, i.e.
-
-    # TODO Fix the doctest
-    # >>> diff = [t2 - t for t in t1]
-    # >>> counts2, bins = np.histogram(diff, bins=bins)
-    # >>> np.array_equal(counts2, counts)
-    # True
-    """
-    if auto: t2 = t1
-    # For auto-CCGs, make sure we use the same exact values
-    # Otherwise numerical issues may arise when we compensate for zeros later
-    if not int(limit * 1e10) % int(binsize * 1e10) == 0:
-        raise ValueError(
-            'Time limit {} must be a '.format(limit) +
-            'multiple of binsize {}'.format(binsize) +
-            ' remainder = {}'.format(limit % binsize))
-    # For efficiency, ⁠ t1 ⁠ should be no longer than ⁠ t2 ⁠
-    swap_args = False
-    if len(t1) > len(t2):
-        swap_args = True
-        t1, t2 = t2, t1
-
-    # Sort both arguments (this takes negligible time)
-    t1 = np.sort(t1)
-    t2 = np.sort(t2)
-
-    # Determine the bin edges for the histogram
-    # Later we will rely on the symmetry of ⁠ bins ⁠ for undoing ⁠ swap_args ⁠
-    limit = float(limit)
-
-    # The numpy.arange method overshoots slightly the edges i.e. binsize + epsilon
-    # which leads to inclusion of spikes falling on edges.
-    bins = np.arange(-limit, limit + binsize, binsize)
-
-    # Determine the indexes into ⁠ t2 ⁠ that are relevant for each spike in ⁠ t1 ⁠
-    ii2 = np.searchsorted(t2, t1 - limit)
-    jj2 = np.searchsorted(t2, t1 + limit)
-
-    # Concatenate the recentered spike times into a big array
-    # We have excluded spikes outside of the histogram range to limit
-    # memory use here.
-    big = np.concatenate([t2[i:j] - t for t, i, j in zip(t1, ii2, jj2)])
-
-    # Actually do the histogram. Note that calls to np.histogram are
-    # expensive because it does not assume sorted data.
-    count, bins = np.histogram(big, bins=bins, density=density)
-
-    if auto:
-        # Compensate for the peak at time zero that results in autocorrelations
-        # by subtracting the total number of spikes from that bin. Note
-        # possible numerical issue here because 0.0 may fall at a bin edge.
-        c_temp, bins_temp = np.histogram([0.], bins=bins)
-        bin_containing_zero = np.nonzero(c_temp)[0][0]
-        count[bin_containing_zero] = 0#-= len(t1)
-
-    # Finally compensate for the swapping of t1 and t2
-    if swap_args:
-        # Here we rely on being able to simply reverse ⁠ counts ⁠. This is only
-        # possible because of the way ⁠ bins ⁠ was defined (bins = -bins[::-1])
-        count = count[::-1]
-
-    return count, bins[1:]
-def plot_correlogram_matrix(neurons_data, binsize, dataset_name, limit=0.02):
-    # Sofia modified this such that we only compute the lower triangle and the upper one is simply mirrored
-    
-    num_neurons = len(neurons_data)
-    fig, axes = plt.subplots(num_neurons, num_neurons, figsize=(num_neurons * 3, num_neurons * 3))
-    
-    print(f"Starting correlogram matrix for {dataset_name}")
-    
-    for i, neuron_i in enumerate(neurons_data):
-        for j, neuron_j in enumerate(neurons_data[:i+1]):  # Compute only for i >= j
-            t1 = neuron_i[:3][2]  # Extract spike times
-            t2 = neuron_j[:3][2]  # Extract spike times
-
-            print(f"Processing Neuron {i+1} vs Neuron {j+1}...")
-            
-            # Compute correlogram
-            counts, bins = correlogram(t1, t2=t2, binsize=binsize, limit=limit, auto=(i == j), density=False)
-
-            # Ensure counts and bins align correctly
-            if len(counts) > len(bins) - 1:
-                counts = counts[:-1]
-
-            bin_centers = (bins[:-1] + bins[1:]) / 2
-
-            # Set color dynamically
-            color = '#AAF0D1' if i == j else '#C9A0DC'  # Green for auto-correlation, purple for others
-            
-            # Plot in the matrix
-            ax = axes[i, j] if num_neurons > 1 else axes
-            ax.bar(bin_centers, counts, width=np.diff(bins), align='center', color=color, alpha=0.7, edgecolor='k')
-            ax.set_xlim(-limit, limit)
-            ax.set_xticks([])
-            ax.set_yticks([])
-            
-            # Mirror results
-            if i != j:
-                ax_mirror = axes[j, i] if num_neurons > 1 else axes
-                ax_mirror.bar(-bin_centers, counts, width=np.diff(bins), align='center', color=color, alpha=0.7, edgecolor='k')
-                ax_mirror.set_xlim(-limit, limit)
-                ax_mirror.set_xticks([])
-                ax_mirror.set_yticks([])
-
-            # Labels for the first row and first column
-            if i == 0:
-                ax.set_title(f"Neuron {j+1}")
-            if j == 0:
-                ax.set_ylabel(f"Neuron {i+1}")
-
-    plt.suptitle(f"Cross-correlogram with (Bin Size = {binsize:.4f}s)", fontsize=16)  # Show bin size in title
-    plt.tight_layout()
-    
-    # Define relative save path
-    save_dir = os.path.join(os.getcwd(), "reports", "figures")  # Relative path
-    os.makedirs(save_dir, exist_ok=True)  # Ensure directory exists
-    save_path = os.path.join(save_dir, f"{dataset_name}_correlogram.png")
-
-    # Save the figure
-    plt.savefig(save_path, dpi=300, bbox_inches='tight')
-    plt.close()  # Free memory
-
-    print(f"Correlogram saved: {save_path}")  # Confirm save location
-#%% Define optimal bin sizes for each dataset
+# Correlogram + plotting correlogram 
+"""
+TODO Make correlograms nicer looking: titles + legends etc
+"""
+# Define optimal bin sizes for each dataset
 optimal_bin_sizes = {
     "ctrl_rat_1": 0.0005,  # Replace with the actual optimal bin size
     "ctrl_rat_2": 0.0005,  # Replace with the actual optimal bin size
     "exp_rat_2": 0.0005,   # Replace with the actual optimal bin size
     "exp_rat_3": 0.0005    # Replace with the actual optimal bin size
 }
-#%% Plot all 4 correlograms using their respective bin sizes
-plot_correlogram_matrix(ctrl_rat_1_neurons_data, binsize=optimal_bin_sizes["ctrl_rat_1"], dataset_name="ctrl_rat_1")
-plot_correlogram_matrix(ctrl_rat_2_neurons_data, binsize=optimal_bin_sizes["ctrl_rat_2"], dataset_name="ctrl_rat_2")
-plot_correlogram_matrix(exp_rat_2_neurons_data, binsize=optimal_bin_sizes["exp_rat_2"], dataset_name="exp_rat_2")
-plot_correlogram_matrix(exp_rat_3_neurons_data, binsize=optimal_bin_sizes["exp_rat_3"], dataset_name="exp_rat_3")
+# Plot all 4 correlograms using their respective bin sizes
+plot_correlogram_matrix(ctrl_rat_1_neurons_data, binsize=optimal_bin_sizes["ctrl_rat_1"], dataset_name="ctrl_rat_1", time_window=non_stimuli_time_1)
+plot_correlogram_matrix(ctrl_rat_2_neurons_data, binsize=optimal_bin_sizes["ctrl_rat_2"], dataset_name="ctrl_rat_2", time_window=non_stimuli_time_2)
+plot_correlogram_matrix(exp_rat_2_neurons_data, binsize=optimal_bin_sizes["exp_rat_2"], dataset_name="exp_rat_2", time_window=non_stimuli_time_3)
+plot_correlogram_matrix(exp_rat_3_neurons_data, binsize=optimal_bin_sizes["exp_rat_3"], dataset_name="exp_rat_3", time_window=non_stimuli_time_4)
 
 """
 Interpretation of the correlograms:
 Features to note
-- how flat is it?
+- how flat is it? -> what does it mean if it's flat??
 - does it show a pause in the middle? we expect one for auto-correlograms but not for cross-correlograms
 
 # TODO Discuss with Denise
@@ -346,13 +167,13 @@ What if we do find a pause in cross-correlograms?
 - inspect subclusters, exploit fact that they are not symmetric and find out when they fire
 - maybe also check adaptation over time as that might explain that
 """ 
-#%%
+#%% Step 3: Descriptive metrics
 """
 ===========================================================
 Step 3: Descriptive metrics
 ===========================================================
 """
-# %%Let's check out the data we have with some descriptive measures at crucial time points: the Pre-CTA and Post-CTA window
+# Let's check out the data we have with some descriptive measures at crucial time points: the Pre-CTA and Post-CTA window
 """
 TODO
 - Mean spiking rate
@@ -380,7 +201,8 @@ TODO
     might get very noisy at the end because there are only few neurons that spike with such long ISI
 """
 
-#%% Define time windows for analysis & extract spike times
+# Define time windows for analysis & extract spike times for descriptive metrics
+
 # List of already defined file paths
 file_paths = [file_1, file_2, file_3, file_4]
 file_names = [os.path.basename(path).replace(".pkl", "") for path in file_paths]
@@ -389,149 +211,115 @@ file_names = [os.path.basename(path).replace(".pkl", "") for path in file_paths]
 figures_dir = os.path.join("reports", "figures")
 os.makedirs(figures_dir, exist_ok=True)
 
-# Extract spike times
+# Create a dictionary to store the datasets
+datasets = {}
+for file_path, file_name in zip(file_paths, file_names):
+    data, neurons, non_stimuli_time = load_dataset(file_path)
+    datasets[file_name] = {
+        "data": data,
+        "neurons": neurons, 
+        "non_stimuli_time": non_stimuli_time
+    }
+    
+# Extracting spike times
 def get_spike_times(data):
-    """
-    Extracts spike times from the 'neurons' key in data.
-    Assumes each neuron entry is a list/tuple where index [2] holds spike times.
-    """
-    neurons_data = data.get("neurons", [])  # Extract neurons list
-    spike_times_list = [np.array(neuron[2]) for neuron in neurons_data if len(neuron) > 2]  # Extract spike times
+    neurons_data = data.get("neurons", [])
+    spike_times_list = [np.array(neuron[2]) for neuron in neurons_data if len(neuron) > 2]
     return spike_times_list
 
-#%% Compute firing rates and sds of firing rates within a given time window per file + plot
 def compute_firing_rates(spike_times_list, time_window):
     start, end = time_window
     duration = end - start
     if duration <= 0:
         return np.zeros(len(spike_times_list))  # Avoid division by zero
-
     firing_rates = np.array([
         np.sum((times >= start) & (times <= end)) / duration if len(times) > 0 else 0
         for times in spike_times_list
     ])
-    
     return firing_rates
 
-# Function to compute standard deviation of firing rates in given time window
 def compute_firing_rate_std(spike_times_list, time_window, bin_width=0.05):
     start, end = time_window
     std_list = []
-    
-    # Define bin edges for the entire window
     bins = np.arange(start, end + bin_width, bin_width)
-    
     for spikes in spike_times_list:
-        # Select spikes that fall within the time window
         spikes_in_window = spikes[(spikes >= start) & (spikes <= end)]
-        
-        # Compute spike counts in each bin
         counts, _ = np.histogram(spikes_in_window, bins=bins)
-        
-        # Convert counts to rates (spikes per second)
         rates = counts / bin_width
-        
-        # Compute standard deviation of the binned rates
         std_rate = np.std(rates)
         std_list.append(std_rate)
-    
     return np.array(std_list)
 
-# Create a single figure wih 2x2 subplots
+# Create a figure with 2x2 subplots for the descriptive metrics plots
 fig, axes = plt.subplots(2, 2, figsize=(12, 10))
 axes = axes.flatten()  # Flatten for easy iteration
 
-# Initialize lists to store min and max values for scaling
-y_min, y_max = float('inf'), -float('inf')  # To store the global min and max for y-axis (firing rates)
-x_min, x_max = 0, 3  # Since x-ticks are fixed as [1, 2, 3] for Non-Stimuli, Pre-CTA, Post-CTA
+y_min, y_max = float('inf'), -float('inf')
+x_min, x_max = 0, 3  # x-axis is fixed to [1,2,3] for the three time windows
 
-# Loop through each file and process data
-for i, (file_path, file_name) in enumerate(zip(file_paths, file_names)):
+# Loop through each file and compute descriptive metrics
+for i, (file_name, ds) in enumerate(datasets.items()):
     try:
-        with open(file_path, 'rb') as f:
-            data = pickle.load(f)  # Load .pkl file
-        
-        # Extract necessary time points
+        data = ds["data"]
+        # Extract time points from the loaded data
         sacc_start = data.get("sacc drinking session start time", 0)
         cta_time = data.get("CTA injection time", 0)
-
-        # Extract spike times correctly from `neurons`
         spike_times_list = get_spike_times(data)
-
-        # Find max spike time (ignoring empty neurons)
+        # Determine maximum spike time (ignoring empty neurons)
         max_time = max((np.max(times) for times in spike_times_list if len(times) > 0), default=0)
-
-        # Define time windows
-        non_stimuli_time = (0, sacc_start)
+        
+        # Retrieve non-stimuli time from the helper; define additional windows
+        non_stimuli_time = ds["non_stimuli_time"]
         pre_CTA_time = (sacc_start, cta_time)
         post_CTA_time = (cta_time + 3 * 3600, max_time)
-
+        
         # Compute firing rates for each window
         non_stimuli_rates = compute_firing_rates(spike_times_list, non_stimuli_time)
         pre_CTA_rates = compute_firing_rates(spike_times_list, pre_CTA_time)
         post_CTA_rates = compute_firing_rates(spike_times_list, post_CTA_time)
-
-        # Compute standard deviation of firing rates for each window
+        
+        # Compute standard deviations for each window
         non_stimuli_std = compute_firing_rate_std(spike_times_list, non_stimuli_time)
         pre_CTA_std = compute_firing_rate_std(spike_times_list, pre_CTA_time)
         post_CTA_std = compute_firing_rate_std(spike_times_list, post_CTA_time)
-
-        # Boxplot
+        
+        # Plot boxplot and overlay standard deviation bars
         ax = axes[i]
         ax.boxplot(
-            [non_stimuli_rates, pre_CTA_rates, post_CTA_rates], 
+            [non_stimuli_rates, pre_CTA_rates, post_CTA_rates],
             tick_labels=["Non-Stimuli", "Pre-CTA", "Post-CTA"]
         )
-        
-        """
-        Matplotlib automatically calculates
-        min and max
-        25th percentile
-        median
-        75th percentile
-        outliers: beyond 1.5xIQR
-        """
-        
-        # Add bar plot for standard deviation on top of boxplot
-        ax.bar([1, 2, 3], 
-               [np.mean(non_stimuli_std), np.mean(pre_CTA_std), np.mean(post_CTA_std)], 
+        ax.bar([1, 2, 3],
+               [np.mean(non_stimuli_std), np.mean(pre_CTA_std), np.mean(post_CTA_std)],
                width=0.3, color='orange', alpha=0.7, label="Std Dev")
-
         ax.set_ylabel("Firing Rate (Hz)")
         ax.set_title(f"Firing Rates - {file_name}")
         ax.grid(axis='y', linestyle='--', alpha=0.6)
-        
-        # Add the legend to explain the orange bars
-        ax.legend(loc='upper right')  # You can adjust 'loc' as needed (e.g., 'upper right', 'upper left', etc.)
+        ax.legend(loc='upper right')
         
         # Update global y-axis scaling
         y_min = min(y_min, np.min([non_stimuli_rates, pre_CTA_rates, post_CTA_rates]))
         y_max = max(y_max, np.max([non_stimuli_rates, pre_CTA_rates, post_CTA_rates]))
         
-        # Display overall summary statistics for this file
+        # Print summary statistics for the dataset
         print(f"Summary statistics for {file_name}:")
         print("Mean non-stimuli firing rate:", np.mean(non_stimuli_rates))
-        print("Standard deviation of non-stimuli firing rates (across neurons):", np.std(non_stimuli_rates))
         print("Mean pre-CTA firing rate:", np.mean(pre_CTA_rates))
-        print("Standard deviation of pre-CTA firing rates (across neurons):", np.std(pre_CTA_rates))
         print("Mean post-CTA firing rate:", np.mean(post_CTA_rates))
-        print("Standard deviation of post-CTA firing rates (across neurons):", np.std(post_CTA_rates))
         print("-" * 50)
-
+        
     except Exception as e:
-        print(f"Error processing {file_path}: {e}")
+        print(f"Error processing {file_name}: {e}")
 
 # Set uniform axis scaling across all subplots
 for ax in axes:
-    ax.set_ylim(y_min - 1, y_max + 1)  # Add a small margin for better visualization
-    ax.set_xlim(x_min - 0.5, x_max + 0.5)  # Slight margin for x-axis to fit the bars
+    ax.set_ylim(y_min - 1, y_max + 1)
+    ax.set_xlim(x_min - 0.5, x_max + 0.5)
 
-# Adjust layout and save the combined figure
 fig.suptitle("Firing Rates Across Time Windows for Each Recording", fontsize=14)
-fig.tight_layout(rect=[0, 0, 1, 0.96])  # Adjust spacing
+fig.tight_layout(rect=[0, 0, 1, 0.96])
 combined_figure_path = os.path.join(figures_dir, "firing_rates_combined.png")
 plt.savefig(combined_figure_path, dpi=300, bbox_inches="tight")
 plt.close()
 
 print(f"Combined plot saved: {combined_figure_path}")
-# %%

@@ -24,6 +24,8 @@ from functions.compute_firing_rate_std import compute_firing_rate_std
 from functions.get_spike_times import get_spike_times
 from functions.process_and_plot_dataset import process_and_plot_dataset
 from functions.find_outliers import find_outliers
+from functions.compute_fano_factor import compute_fano_factor
+from functions.compute_cv_isi import compute_cv_isi
 
 #%% Step 1 Inspect data
 """
@@ -340,4 +342,100 @@ Interpretation of the descriptive metrics:
 
 """
 
+# %% Compute Fano Factor + CV ISI
+# Create dictionaries to store CV and Fano Factor results for each file
+cv_results = {}
+fano_results = {}
+
+# Loop through each dataset and compute CV and Fano Factor
+for file_name, ds in datasets.items():
+    neurons = ds["neurons"]
+    # For CV, here we use the non-stimuli time window (adjust if desired)
+    cv_values = compute_cv_isi(neurons, time_window=ds["non_stimuli_time"])
+    # For Fano Factor, also use the non-stimuli time window with a chosen bin width (e.g., 0.05 sec)
+    fano_values = compute_fano_factor(neurons, time_window=ds["non_stimuli_time"], bin_width=0.05)
+    
+    cv_results[file_name] = cv_values
+    fano_results[file_name] = fano_values
+
+# Define the three time window names
+time_windows = ["Non-Stimuli", "Pre-CTA", "Post-CTA"]
+
+# Create a figure for CV with 1x3 subplots
+fig_cv, axs_cv = plt.subplots(1, 3, figsize=(15, 5))
+for i, window_name in enumerate(time_windows):
+    data_to_plot = []
+    labels = []
+    for file_name, ds in datasets.items():
+        data = ds["data"]
+        neurons = ds["neurons"]
+        spike_times_list = get_spike_times(data)
+        sacc_start = data.get("sacc drinking session start time", 0)
+        cta_time = data.get("CTA injection time", 0)
+        
+        if window_name == "Non-Stimuli":
+            twindow = ds["non_stimuli_time"]
+        elif window_name == "Pre-CTA":
+            twindow = (sacc_start, cta_time)
+        elif window_name == "Post-CTA":
+            max_time = max((np.max(times) for times in spike_times_list if len(times) > 0), default=0)
+            twindow = (cta_time + 3 * 3600, max_time)
+        
+        # Compute CV for this recording and time window
+        cv_values = compute_cv_isi(neurons, time_window=twindow)
+        data_to_plot.append(cv_values)
+        labels.append(file_name)
+    
+    # Plot a boxplot for the current time window
+    axs_cv[i].boxplot(data_to_plot, labels=labels, patch_artist=True,
+                      boxprops=dict(facecolor='skyblue', color='black'),
+                      medianprops=dict(color='black'))
+    axs_cv[i].set_title(window_name)
+    axs_cv[i].set_ylabel("CV")
+    
+plt.suptitle("CV of ISIs Across Time Windows and Recordings")
+plt.tight_layout(rect=[0, 0, 1, 0.96])
+cv_plot_path = os.path.join(figures_dir, "cv_temporal.png")
+plt.savefig(cv_plot_path, dpi=300, bbox_inches="tight")
+plt.close()
+print("Temporal CV plot saved:", cv_plot_path)
+
+# Create a figure for Fano Factor with 1x3 subplots
+fig_fano, axs_fano = plt.subplots(1, 3, figsize=(15, 5))
+for i, window_name in enumerate(time_windows):
+    data_to_plot = []
+    labels = []
+    for file_name, ds in datasets.items():
+        data = ds["data"]
+        neurons = ds["neurons"]
+        spike_times_list = get_spike_times(data)
+        sacc_start = data.get("sacc drinking session start time", 0)
+        cta_time = data.get("CTA injection time", 0)
+        
+        if window_name == "Non-Stimuli":
+            twindow = ds["non_stimuli_time"]
+        elif window_name == "Pre-CTA":
+            twindow = (sacc_start, cta_time)
+        elif window_name == "Post-CTA":
+            max_time = max((np.max(times) for times in spike_times_list if len(times) > 0), default=0)
+            twindow = (cta_time + 3 * 3600, max_time)
+        
+        # Compute Fano Factor for this recording and time window (using a bin width of 0.05 sec)
+        fano_values = compute_fano_factor(neurons, time_window=twindow, bin_width=0.05)
+        data_to_plot.append(fano_values)
+        labels.append(file_name)
+    
+    # Plot a boxplot for the current time window
+    axs_fano[i].boxplot(data_to_plot, labels=labels, patch_artist=True,
+                        boxprops=dict(facecolor='skyblue', color='black'),
+                        medianprops=dict(color='black'))
+    axs_fano[i].set_title(window_name)
+    axs_fano[i].set_ylabel("Fano Factor")
+    
+plt.suptitle("Fano Factor of Spike Counts Across Time Windows and Recordings")
+plt.tight_layout(rect=[0, 0, 1, 0.96])
+fano_plot_path = os.path.join(figures_dir, "fano_temporal.png")
+plt.savefig(fano_plot_path, dpi=300, bbox_inches="tight")
+plt.close()
+print("Temporal Fano Factor plot saved:", fano_plot_path)
 # %%

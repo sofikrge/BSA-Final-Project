@@ -23,6 +23,7 @@ from functions.compute_firing_rates import compute_firing_rates
 from functions.compute_firing_rate_std import compute_firing_rate_std
 from functions.get_spike_times import get_spike_times
 from functions.process_and_plot_dataset import process_and_plot_dataset
+from functions.find_outliers import find_outliers
 
 #%% Step 1 Inspect data
 """
@@ -266,6 +267,14 @@ for ax, (file_name, ds) in zip(axes, datasets.items()):
         print("Mean post-CTA firing rate:", np.mean(post_CTA_rates))
         print("-" * 50)
         
+        # Identify outliers for each time window
+        for window_name, rates in zip(["Non-Stimuli", "Pre-CTA", "Post-CTA"],
+                                      [non_stimuli_rates, pre_CTA_rates, post_CTA_rates]):
+            outlier_indices = find_outliers(rates)
+            if len(outlier_indices) > 0:
+                for idx in outlier_indices:
+                    print(f"{file_name}, {window_name} outlier: Neuron index {idx}, rate = {rates[idx]}")
+        
         # Determine group based on file name
         group = "Control" if "ctrl" in file_name.lower() else "Experimental"
         
@@ -325,4 +334,10 @@ plt.savefig(group_plot_path, dpi=300, bbox_inches="tight")
 plt.close()
 
 print(f"Group-level plot saved: {group_plot_path}")
+
+"""
+Interpretation of the descriptive metrics:
+
+"""
+
 # %%

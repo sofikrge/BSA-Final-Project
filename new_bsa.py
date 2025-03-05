@@ -87,7 +87,7 @@ phase and a very strong stimulus would be needed for a new spike
 - chose a conservative criterion because our biggest enemy too high is data loss
 
 """ 
-#%% Extract data + run correlograms
+#%% Extract data 
 # Extract spiking data from each pkl file and save it as its own variable
 # Define file paths
 file_1 = os.path.join(pkl_dir, "ctrl rat 1.pkl")
@@ -232,6 +232,9 @@ axes = axes.flatten()
 # Collect y-axis limits from each subplot
 y_mins, y_maxes = [], []
 
+# Prep list to collect summary stats for individual recordings
+summary_stats = []
+
 # Loop through each dataset and process it
 for ax, (file_name, ds) in zip(axes, datasets.items()):
     try:
@@ -239,20 +242,41 @@ for ax, (file_name, ds) in zip(axes, datasets.items()):
         y_mins.append(local_ymin)
         y_maxes.append(local_ymax)
         
-        # Print summary statistics
+        # Extract data and compute firing rates for individual summary
         data = ds["data"]
         sacc_start = data.get("sacc drinking session start time", 0)
         cta_time = data.get("CTA injection time", 0)
         spike_times_list = get_spike_times(data)
-        non_stimuli_rates = compute_firing_rates(spike_times_list, ds["non_stimuli_time"])
-        pre_CTA_rates = compute_firing_rates(spike_times_list, (sacc_start, cta_time))
-        post_CTA_rates = compute_firing_rates(spike_times_list, (cta_time + 3 * 3600, max(np.max(times) for times in spike_times_list if len(times) > 0)))
         
+        # Define time windows
+        non_stimuli_time = ds["non_stimuli_time"]
+        pre_CTA_time = (sacc_start, cta_time)
+        max_time = max((np.max(times) for times in spike_times_list if len(times) > 0), default=0)
+        post_CTA_time = (cta_time + 3 * 3600, max_time)
+        
+        # Compute firing rates using helper functions
+        non_stimuli_rates = compute_firing_rates(spike_times_list, non_stimuli_time)
+        pre_CTA_rates = compute_firing_rates(spike_times_list, pre_CTA_time)
+        post_CTA_rates = compute_firing_rates(spike_times_list, post_CTA_time)
+        
+        # Print summary statistics for the individual dataset
         print(f"Summary statistics for {file_name}:")
         print("Mean non-stimuli firing rate:", np.mean(non_stimuli_rates))
         print("Mean pre-CTA firing rate:", np.mean(pre_CTA_rates))
         print("Mean post-CTA firing rate:", np.mean(post_CTA_rates))
         print("-" * 50)
+        
+        # Determine group based on file name
+        group = "Control" if "ctrl" in file_name.lower() else "Experimental"
+        
+        # Store individual means along with the group label
+        summary_stats.append({
+            "Recording": file_name,
+            "Group": group,
+            "Non-Stimuli Mean": np.mean(non_stimuli_rates),
+            "Pre-CTA Mean": np.mean(pre_CTA_rates),
+            "Post-CTA Mean": np.mean(post_CTA_rates)
+        })
         
     except Exception as e:
         print(f"Error processing {file_name}: {e}")
@@ -271,4 +295,34 @@ plt.savefig(combined_figure_path, dpi=300, bbox_inches="tight")
 plt.close()
 
 print(f"Combined plot saved: {combined_figure_path}")
+
+# Create a DataFrame for individual recordings and compute group-level summary
+summary_df = pd.DataFrame(summary_stats)
+print("\nIndividual recording summary:")
+print(summary_df)
+
+group_summary = summary_df.groupby("Group").mean(numeric_only=True)
+print("\nGroup-level summary (Control vs Experimental):")
+print(group_summary)
+
+# Create a 1x2 figure for group-level means
+fig2, axs = plt.subplots(1, 2, figsize=(12, 5))
+# Iterate over groups and plot a bar chart for each
+for ax, (group, row) in zip(axs, group_summary.iterrows()):
+    time_windows = ["Non-Stimuli", "Pre-CTA", "Post-CTA"]
+    means = [row["Non-Stimuli Mean"], row["Pre-CTA Mean"], row["Post-CTA Mean"]]
+    
+    ax.bar(time_windows, means, color='skyblue', edgecolor='k', alpha=0.7)
+    ax.set_title(f"{group} Group")
+    ax.set_ylabel("Mean Firing Rate (Hz)")
+    ax.set_xlabel("Time Window")
+    ax.grid(axis='y', linestyle='--', alpha=0.6)
+
+plt.suptitle("Group-Level Mean Firing Rates")
+plt.tight_layout(rect=[0, 0, 1, 0.96])
+group_plot_path = os.path.join(figures_dir, "group_level_firing_rates.png")
+plt.savefig(group_plot_path, dpi=300, bbox_inches="tight")
+plt.close()
+
+print(f"Group-level plot saved: {group_plot_path}")
 # %%

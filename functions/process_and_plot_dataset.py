@@ -34,7 +34,7 @@ def process_and_plot_dataset(ds, file_name, ax):
     )
     ax.bar([1, 2, 3],
            [np.mean(non_stimuli_std), np.mean(pre_CTA_std), np.mean(post_CTA_std)],
-           width=0.3, color='orange', alpha=0.7, label="Std Dev")
+           width=0.3, color='skyblue', alpha=0.7, label="Std Dev")
     ax.set_ylabel("Firing Rate (Hz)")
     ax.set_title(f"Firing Rates - {file_name}")
     ax.grid(axis='y', linestyle='--', alpha=0.6)

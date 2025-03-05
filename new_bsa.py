@@ -1,3 +1,4 @@
+#%%
 import pickle
 import re
 import numpy as np
@@ -18,6 +19,10 @@ BSA Final Assignment - Denise Jaeschke & Sofia Karageorgiou
 from functions.load_dataset import load_dataset
 from functions.correlogram import correlogram
 from functions.plot_correlogram_matrix import plot_correlogram_matrix
+from functions.compute_firing_rates import compute_firing_rates
+from functions.compute_firing_rate_std import compute_firing_rate_std
+from functions.get_spike_times import get_spike_times
+from functions.process_and_plot_dataset import process_and_plot_dataset
 
 #%% Step 1 Inspect data
 """
@@ -137,8 +142,7 @@ The calculations showed that ___ is the optimal bin size for the dataset ___.
 (For details look at functions/calculateidealbinsize.py)
 
 """
-
-# Correlogram + plotting correlogram 
+#%% Correlogram calculation + plotting 
 """
 TODO Make correlograms nicer looking: titles + legends etc
 """
@@ -221,87 +225,29 @@ for file_path, file_name in zip(file_paths, file_names):
         "non_stimuli_time": non_stimuli_time
     }
     
-# Extracting spike times
-def get_spike_times(data):
-    neurons_data = data.get("neurons", [])
-    spike_times_list = [np.array(neuron[2]) for neuron in neurons_data if len(neuron) > 2]
-    return spike_times_list
+# Create a figure with 2x2 subplots and shared axes
+fig, axes = plt.subplots(2, 2, figsize=(12, 10), sharex=True, sharey=True)
+axes = axes.flatten()
 
-def compute_firing_rates(spike_times_list, time_window):
-    start, end = time_window
-    duration = end - start
-    if duration <= 0:
-        return np.zeros(len(spike_times_list))  # Avoid division by zero
-    firing_rates = np.array([
-        np.sum((times >= start) & (times <= end)) / duration if len(times) > 0 else 0
-        for times in spike_times_list
-    ])
-    return firing_rates
+# Collect y-axis limits from each subplot
+y_mins, y_maxes = [], []
 
-def compute_firing_rate_std(spike_times_list, time_window, bin_width=0.05):
-    start, end = time_window
-    std_list = []
-    bins = np.arange(start, end + bin_width, bin_width)
-    for spikes in spike_times_list:
-        spikes_in_window = spikes[(spikes >= start) & (spikes <= end)]
-        counts, _ = np.histogram(spikes_in_window, bins=bins)
-        rates = counts / bin_width
-        std_rate = np.std(rates)
-        std_list.append(std_rate)
-    return np.array(std_list)
-
-# Create a figure with 2x2 subplots for the descriptive metrics plots
-fig, axes = plt.subplots(2, 2, figsize=(12, 10))
-axes = axes.flatten()  # Flatten for easy iteration
-
-y_min, y_max = float('inf'), -float('inf')
-x_min, x_max = 0, 3  # x-axis is fixed to [1,2,3] for the three time windows
-
-# Loop through each file and compute descriptive metrics
-for i, (file_name, ds) in enumerate(datasets.items()):
+# Loop through each dataset and process it
+for ax, (file_name, ds) in zip(axes, datasets.items()):
     try:
+        local_ymin, local_ymax = process_and_plot_dataset(ds, file_name, ax)
+        y_mins.append(local_ymin)
+        y_maxes.append(local_ymax)
+        
+        # Print summary statistics
         data = ds["data"]
-        # Extract time points from the loaded data
         sacc_start = data.get("sacc drinking session start time", 0)
         cta_time = data.get("CTA injection time", 0)
         spike_times_list = get_spike_times(data)
-        # Determine maximum spike time (ignoring empty neurons)
-        max_time = max((np.max(times) for times in spike_times_list if len(times) > 0), default=0)
+        non_stimuli_rates = compute_firing_rates(spike_times_list, ds["non_stimuli_time"])
+        pre_CTA_rates = compute_firing_rates(spike_times_list, (sacc_start, cta_time))
+        post_CTA_rates = compute_firing_rates(spike_times_list, (cta_time + 3 * 3600, max(np.max(times) for times in spike_times_list if len(times) > 0)))
         
-        # Retrieve non-stimuli time from the helper; define additional windows
-        non_stimuli_time = ds["non_stimuli_time"]
-        pre_CTA_time = (sacc_start, cta_time)
-        post_CTA_time = (cta_time + 3 * 3600, max_time)
-        
-        # Compute firing rates for each window
-        non_stimuli_rates = compute_firing_rates(spike_times_list, non_stimuli_time)
-        pre_CTA_rates = compute_firing_rates(spike_times_list, pre_CTA_time)
-        post_CTA_rates = compute_firing_rates(spike_times_list, post_CTA_time)
-        
-        # Compute standard deviations for each window
-        non_stimuli_std = compute_firing_rate_std(spike_times_list, non_stimuli_time)
-        pre_CTA_std = compute_firing_rate_std(spike_times_list, pre_CTA_time)
-        post_CTA_std = compute_firing_rate_std(spike_times_list, post_CTA_time)
-        
-        # Plot boxplot and overlay standard deviation bars
-        ax = axes[i]
-        ax.boxplot(
-            [non_stimuli_rates, pre_CTA_rates, post_CTA_rates],
-            tick_labels=["Non-Stimuli", "Pre-CTA", "Post-CTA"]
-        )
-        ax.bar([1, 2, 3],
-               [np.mean(non_stimuli_std), np.mean(pre_CTA_std), np.mean(post_CTA_std)],
-               width=0.3, color='orange', alpha=0.7, label="Std Dev")
-        ax.set_ylabel("Firing Rate (Hz)")
-        ax.set_title(f"Firing Rates - {file_name}")
-        ax.grid(axis='y', linestyle='--', alpha=0.6)
-        ax.legend(loc='upper right')
-        
-        # Update global y-axis scaling
-        y_min = min(y_min, np.min([non_stimuli_rates, pre_CTA_rates, post_CTA_rates]))
-        y_max = max(y_max, np.max([non_stimuli_rates, pre_CTA_rates, post_CTA_rates]))
-        
-        # Print summary statistics for the dataset
         print(f"Summary statistics for {file_name}:")
         print("Mean non-stimuli firing rate:", np.mean(non_stimuli_rates))
         print("Mean pre-CTA firing rate:", np.mean(pre_CTA_rates))
@@ -311,10 +257,12 @@ for i, (file_name, ds) in enumerate(datasets.items()):
     except Exception as e:
         print(f"Error processing {file_name}: {e}")
 
-# Set uniform axis scaling across all subplots
+# Set uniform y-axis scaling across all subplots based on collected limits
+global_ymin = min(y_mins) - 1
+global_ymax = max(y_maxes) + 1
 for ax in axes:
-    ax.set_ylim(y_min - 1, y_max + 1)
-    ax.set_xlim(x_min - 0.5, x_max + 0.5)
+    ax.set_ylim(global_ymin, global_ymax)
+    ax.set_xlim(-0.5, 3.5)
 
 fig.suptitle("Firing Rates Across Time Windows for Each Recording", fontsize=14)
 fig.tight_layout(rect=[0, 0, 1, 0.96])
@@ -323,3 +271,4 @@ plt.savefig(combined_figure_path, dpi=300, bbox_inches="tight")
 plt.close()
 
 print(f"Combined plot saved: {combined_figure_path}")
+# %%

@@ -1,12 +1,37 @@
+#%%
+import pickle
+import re
+import numpy as np
+import os
+import pandas as pd
+import matplotlib.pyplot as plt
+import glob
+import sys
+
+from functions.load_dataset import load_dataset
+from functions.correlogram import correlogram
+from functions.plot_correlogram_matrix import plot_correlogram_matrix
+from functions.compute_firing_rates import compute_firing_rates
+from functions.compute_firing_rate_std import compute_firing_rate_std
+from functions.get_spike_times import get_spike_times
+from functions.process_and_plot_dataset import process_and_plot_dataset
+from functions.find_outliers import find_outliers
+from functions.compute_fano_factor import compute_fano_factor
+from functions.compute_cv_isi import compute_cv_isi
+from functions.merge_datasets import merge_datasets
+from functions.plot_stacked_raster_and_psth import plot_stacked_raster_and_psth
+from functions.plot_group_figures import plot_group_figures
+from functions.plot_isi_metrics_single_neurons import plot_isi_metrics_single_neuron
+
 #%% 
 """
-===========================================================
+=================================================================================================================================================================================
 BSA Final Assignment - Denise Jaeschke & Sofia Karageorgiou
-===========================================================
+=================================================================================================================================================================================
 """
-#%%
+#%% All TODO s and ideas
 """
-All TODO s and ideas
+- IMPORTANT SOFIA: Need to change saving directory bc its saving to the wrong folder rn 
 - maybe define a spike train class so that we can optimise the way we load our data over and over again?
 - I think I am pooling all neurons per file for some metrics which are only meaningful per neuron?
 - consider removing outliers?
@@ -16,6 +41,32 @@ All TODO s and ideas
 - Unsure: I intentionally did not plot the PSTHs for each neuron separately bc I don't think that makes sense with the amount of data we're working with 
 - we should consider having all plots with the same scale for better comparison
 - create calculateidealbinsize (if we have time)
+- add std to group level firing rates plot
+- maybe for isi metrics we can have all neurons in one plot so we have 4 figures in total? because the current set-up is quite messy with each neuron getting its own plot
+- save processed data in its prospective folder
+- adjust naming of figures to be more descriptive
+- have own folders per general code section for figures to make it easier to follow
+
+To compare at the end:
+- subtract baseline non-stimulus firing rate from evoked responses to see how much they change -> 2 plots: control water and sugar + experimental water and sugar
+- statistical analysis to see if the changes are significant
+- can one correlate metrics over time windows? e.g., correlation of neuron 1 precta with neuron 1 postcta: high correlation would mean firing remains similar
+    while low correlation would mean the response changed -> maybe create heatmaps with different colors for different degrees of correlation?
+Chats notes on that:
+1. Subtract Baseline from Evoked Response: 
+   - **Idea:** Compute the difference between the baseline (non-stimulus) firing rate and the evoked firing rate (during taste presentations).  
+   - **Visualization:** Create separate plots for control and experimental conditions for water and sugar. This directly shows how much each neuron's firing rate changes from baseline.  
+   - **Statistical Analysis:** You can run paired statistical tests (e.g., paired t-test or Wilcoxon signed-rank test) to assess if the change is significant within groups, and then compare between control and experimental groups.
+2. Correlation of Metrics Over Time Windows:
+   - **Idea:** Compute metrics (e.g., CV, Fano Factor, or even raw firing rate) per neuron for different time windows (e.g., pre-CTA vs. post-CTA). Then, correlate these metrics for each neuron.  
+   - **Interpretation:**  
+     - A high correlation indicates that the relative firing properties remain similar across conditions (e.g., a neuron that is bursty pre-CTA remains bursty post-CTA).  
+     - A low correlation suggests that the firing properties have shifted—perhaps due to the effects of CTA.  
+   - **Visualization:** Creating heatmaps of the correlation coefficients (using, say, different colors to indicate degrees of similarity/difference) is a great idea. This can provide a quick visual reference for which neurons change most dramatically.
+3. Implementation Considerations:
+   - When subtracting baseline from evoked responses, ensure you're aligning the time windows correctly.  
+   - For the correlation analysis, you might want to compute the metric per neuron in each time window and then use a scatter plot (or a correlation matrix/heatmap) to compare the values.
+   - It's also useful to check the overall distribution of these metrics to see if any neurons are outliers and how that might affect your statistical tests.
 
 Descriptive metrics:
 - Mean spiking rate
@@ -51,36 +102,11 @@ phase and a very strong stimulus would be needed for a new spike
 - chose a conservative criterion because our biggest enemy too high is data loss
 """
 
-#%% All imports
-import pickle
-import re
-import numpy as np
-import os
-import pandas as pd
-import matplotlib.pyplot as plt
-import glob
-import sys
-
-from functions.load_dataset import load_dataset
-from functions.correlogram import correlogram
-from functions.plot_correlogram_matrix import plot_correlogram_matrix
-from functions.compute_firing_rates import compute_firing_rates
-from functions.compute_firing_rate_std import compute_firing_rate_std
-from functions.get_spike_times import get_spike_times
-from functions.process_and_plot_dataset import process_and_plot_dataset
-from functions.find_outliers import find_outliers
-from functions.compute_fano_factor import compute_fano_factor
-from functions.compute_cv_isi import compute_cv_isi
-from functions.merge_datasets import merge_datasets
-from functions.plot_stacked_raster_and_psth import plot_stacked_raster_and_psth
-from functions.plot_group_figures import plot_group_figures
-from functions.plot_isi_metrics_single_neurons import plot_isi_metrics_single_neuron
-
 #%% Step 1 Inspect data
 """
-===========================================================
+=================================================================================================================================================================================
 Step 1: Inspect data
-===========================================================
+=================================================================================================================================================================================
 First we will check whether the data matches the documentation we were provided with.
 Thus, we looked at the data types, the keys of the dictionary, and the content of each key.
 """
@@ -115,9 +141,9 @@ Now, we'll extract the spike data
 
 #%% Step 2: Exclude Data
 """
-===========================================================
+=================================================================================================================================================================================
 Step 2: Data exclusion
-===========================================================
+=================================================================================================================================================================================
 Next, our main goal will be to check whether we are actually 
 dealing with separate neuronal spiking data or whether some 
 spiking activity that is supposed to come from a single 
@@ -186,9 +212,9 @@ The calculations showed that ___ is the optimal bin size for the dataset ___.
 # Define optimal bin sizes for each dataset
 optimal_bin_sizes = {
     "ctrl_rat_1": 0.0005,  # Replace with the actual optimal bin size
-    "ctrl_rat_2": 0.0005,  # Replace with the actual optimal bin size
-    "exp_rat_2": 0.0005,   # Replace with the actual optimal bin size
-    "exp_rat_3": 0.0005    # Replace with the actual optimal bin size
+    "ctrl_rat_2": 0.0005,  
+    "exp_rat_2": 0.0005,   
+    "exp_rat_3": 0.0005   
 }
 # Plot all 4 correlograms using their respective bin sizes
 plot_correlogram_matrix(ctrl_rat_1_neurons_data, binsize=optimal_bin_sizes["ctrl_rat_1"], dataset_name="ctrl_rat_1", time_window=non_stimuli_time_1)
@@ -208,12 +234,11 @@ What if we do find a pause in cross-correlograms?
 """ 
 #%% Step 3: Descriptive metrics
 """
-===========================================================
+=================================================================================================================================================================================
 Step 3: Descriptive metrics
-===========================================================
+=================================================================================================================================================================================
 """
 # Let's check out the data we have with some descriptive measures at crucial time points: the Pre-CTA and Post-CTA window
-
 # Define time windows for analysis & extract spike times for descriptive metrics
 
 # List of already defined file paths
@@ -485,7 +510,6 @@ for file_name, ds in datasets.items():
                             limit=0.02, time_window=post_window)
 
 # %% TIH, Survivor, Hazard
-
 # Per-Neuron ISI Metrics for Each Recording
 # Define the base directory for saving per-neuron ISI metric plots (created new one because it was too messy otherwise)
 base_isi_dir = os.path.join(figures_dir, "ISI metrics per neuron")
@@ -511,6 +535,104 @@ for file_name, ds in datasets.items():
         plot_isi_metrics_single_neuron(neuron, time_window, bins=50,
                                        figure_title=neuron_title,
                                        save_path=neuron_save_path)
+#%% import numpy as np
+import matplotlib.pyplot as plt
+import os
+from functions.compute_firing_rates import compute_firing_rates  # if needed
 
+def plot_firing_rate_paired(neurons, baseline_window, evoked_window, save_path=None,
+                            title="Paired Firing Rates per Neuron", xlabel="Baseline Firing Rate (Hz)",
+                            ylabel="Evoked Firing Rate (Hz)"):
+    """
+    For each neuron, compute the firing rate in two time windows (baseline and evoked)
+    and create a paired dot plot. Each neuron is represented by two points (baseline and evoked)
+    connected by a line.
+    
+    Parameters:
+      neurons : list
+          List of neurons (spike times expected at index 2).
+      baseline_window : tuple
+          (start, end) in seconds for baseline.
+      evoked_window : tuple
+          (start, end) in seconds for the evoked period.
+      save_path : str or None
+          If provided, saves the figure to this path.
+      title : str
+          Title for the plot.
+      xlabel : str
+          Label for the x-axis.
+      ylabel : str
+          Label for the y-axis.
+          
+    Returns:
+      baseline_rates, evoked_rates : np.array
+          Arrays of firing rates for each condition.
+    """
+    baseline_rates = []
+    evoked_rates = []
+    baseline_duration = baseline_window[1] - baseline_window[0]
+    evoked_duration = evoked_window[1] - evoked_window[0]
+    
+    for neuron in neurons:
+        spikes = np.array(neuron[2])
+        # Filter spikes for baseline and evoked windows
+        baseline_spikes = spikes[(spikes >= baseline_window[0]) & (spikes <= baseline_window[1])]
+        evoked_spikes = spikes[(spikes >= evoked_window[0]) & (spikes <= evoked_window[1])]
+        # Compute firing rates (Hz)
+        baseline_rate = len(baseline_spikes) / baseline_duration if baseline_duration > 0 else 0
+        evoked_rate = len(evoked_spikes) / evoked_duration if evoked_duration > 0 else 0
+        baseline_rates.append(baseline_rate)
+        evoked_rates.append(evoked_rate)
+    
+    baseline_rates = np.array(baseline_rates)
+    evoked_rates = np.array(evoked_rates)
+    
+    # Create the paired dot plot
+    n = len(baseline_rates)
+    x = np.array([0, 1])
+    plt.figure(figsize=(8, 6))
+    for i in range(n):
+        plt.plot(x, [baseline_rates[i], evoked_rates[i]], color='gray', alpha=0.7)
+    plt.scatter(np.zeros(n), baseline_rates, color='blue', s=50, label='Baseline')
+    plt.scatter(np.ones(n), evoked_rates, color='red', s=50, label='Evoked')
+    
+    plt.xticks([0, 1], ['Baseline', 'Evoked'])
+    plt.ylabel("Firing Rate (Hz)")
+    
+    # Compute Pearson correlation coefficient (optional)
+    corr = np.corrcoef(baseline_rates, evoked_rates)[0, 1]
+    plt.title(title + f"\nPearson r = {corr:.2f}")
+    
+    plt.legend()
+    plt.tight_layout()
+    
+    if save_path:
+        plt.savefig(save_path, dpi=300, bbox_inches="tight")
+        print(f"Paired firing rate plot saved: {save_path}")
+        plt.close()
+    else:
+        plt.show()
+    
+    return baseline_rates, evoked_rates
 
-# %%
+# ---------------- Integration into Main Pipeline -------------------
+
+# For each recording in your datasets, compute and plot the paired firing rate changes.
+# Each figure is one per rat (plotting all neurons on the same scatter plot).
+
+for file_name, ds in datasets.items():
+    data = ds["data"]
+    neurons = ds["neurons"]
+    
+    # Define the time windows:
+    # Baseline: Use the non-stimulated period (from 0 to saccharin session start)
+    baseline_window = ds["non_stimuli_time"]
+    # Evoked: For example, a 120-second window starting at the saccharin drinking session start time.
+    evoked_window = (data["sacc drinking session start time"],
+                     data["sacc drinking session start time"] + 120)
+    
+    save_path = os.path.join(figures_dir, f"{file_name}_firing_rate_paired.png")
+    plot_firing_rate_paired(neurons, baseline_window, evoked_window, save_path=save_path,
+                            title=f"{file_name}: Baseline vs. Evoked Firing Rates",
+                            xlabel="Baseline Firing Rate (Hz)",
+                            ylabel="Evoked Firing Rate (Hz)")

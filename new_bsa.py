@@ -6,10 +6,49 @@ BSA Final Assignment - Denise Jaeschke & Sofia Karageorgiou
 """
 #%%
 """
-All our TODO s and ideas
+All TODO s and ideas
 - maybe define a spike train class so that we can optimise the way we load our data over and over again?
 - I think I am pooling all neurons per file for some metrics which are only meaningful per neuron?
+- consider removing outliers?
+- comment out data inspection before submission maybe
+- Make correlograms nicer looking: titles + legends etc
+- need to change the time window we're looking at, way too large for TIH etc.
+- Unsure: I intentionally did not plot the PSTHs for each neuron separately bc I don't think that makes sense with the amount of data we're working with 
+- we should consider having all plots with the same scale for better comparison
+- create calculateidealbinsize (if we have time)
 
+Descriptive metrics:
+- Mean spiking rate
+- Variance
+- Coefficient of Variation (CV)
+    1 for Poisson, because both mean and variance = lambda (rate parameter of process so average number of events in a given time interval)
+    Shows how random vs regular activity
+    When >1 then neurons are bursty, variability higher than expected
+    When <1 usually dealing with regular neurons 
+- Fano Factor
+    F >1 indicates overdispersion so larger variance than mean, could be clustering or correlation among events
+    F<1 underdispersion, more regular or uniform distribution of events than what a Poisson assumes
+    If Fano factor approaches Cv^2 over long time intervals, it means that the next spike depends on the previous one
+- ISI
+    What is the chance for a spike t seconds after the previous
+- TIH
+    Histogram of time difference between adjacent spikes (so of ISI)
+- Survivor function
+    probability neuron stays quiet for time t after previous spike, initial value is 1 and decreases to 0 as t approaches infinity 
+- Hazard function
+    independent probability to fire at any single point
+    mainly used to detect burst activity and refractory period
+    focuses on risk of an event happening regardless of history
+    basically rate at which survivor function decays
+    might get very noisy at the end because there are only few neurons that spike with such long ISI
+
+Gameplan for exclusion
+- only look at unstimulated phase
+- 0.5ms bin size as that is the absolute refractory period -> one spike is happening so look at 2 bins
+- no immediate peak next to absolute refractory period
+- 2ms relative refractory period -> look at 4 bins, there should be close to none as we are looking at the unstimulated 
+phase and a very strong stimulus would be needed for a new spike
+- chose a conservative criterion because our biggest enemy too high is data loss
 """
 
 #%% All imports
@@ -44,8 +83,6 @@ Step 1: Inspect data
 ===========================================================
 First we will check whether the data matches the documentation we were provided with.
 Thus, we looked at the data types, the keys of the dictionary, and the content of each key.
-TODO (Sofia): Maybe comment this whole part out before submission? 
-
 """
 #%% Inspect the data using the helper function
 base_dir = os.path.dirname(os.path.abspath(__file__))
@@ -89,15 +126,6 @@ treated as one.
 
 For that, we will plot the correlogram of each data set and 
 for now focus on the auto-correlograms.
-
-TODO
-We have the following gameplan:
-- only look at unstimulated phase
-- 0.5ms bin size as that is the absolute refractory period -> one spike is happening so look at 2 bins
-- no immediate peak next to absolute refractory period
-- 2ms relative refractory period -> look at 4 bins, there should be close to none as we are looking at the unstimulated 
-phase and a very strong stimulus would be needed for a new spike
-- chose a conservative criterion because our biggest enemy too high is data loss
 
 """ 
 #%% Extract data 
@@ -150,15 +178,11 @@ The optimal bin size achieves the best balance between these two extremes.
 
 We computed Cn(Delta) based on the formula from this video: https://youtu.be/VJGtyeR87R4?si=wsTlEeRorVug9kJC
 
-TODO (Sofia): Create it cause what we have rn is not functional :/
 The calculations showed that ___ is the optimal bin size for the dataset ___.
 (For details look at functions/calculateidealbinsize.py)
 
 """
 #%% Correlogram calculation + plotting 
-"""
-TODO Make correlograms nicer looking: titles + legends etc
-"""
 # Define optimal bin sizes for each dataset
 optimal_bin_sizes = {
     "ctrl_rat_1": 0.0005,  # Replace with the actual optimal bin size
@@ -178,8 +202,6 @@ Features to note
 - how flat is it? -> what does it mean if it's flat??
 - does it show a pause in the middle? we expect one for auto-correlograms but not for cross-correlograms
 
-# TODO Discuss with Denise
-
 What if we do find a pause in cross-correlograms?
 - inspect subclusters, exploit fact that they are not symmetric and find out when they fire
 - maybe also check adaptation over time as that might explain that
@@ -191,32 +213,6 @@ Step 3: Descriptive metrics
 ===========================================================
 """
 # Let's check out the data we have with some descriptive measures at crucial time points: the Pre-CTA and Post-CTA window
-"""
-TODO
-- Mean spiking rate
-- Variance
-- Coefficient of Variation (CV)
-    1 for Poisson, because both mean and variance = lambda (rate parameter of process so average number of events in a given time interval)
-    Shows how random vs regular activity
-    When >1 then neurons are bursty, variability higher than expected
-    When <1 usually dealing with regular neurons 
-- Fano Factor
-    F >1 indicates overdispersion so larger variance than mean, could be clustering or correlation among events
-    F<1 underdispersion, more regular or uniform distribution of events than what a Poisson assumes
-    If Fano factor approaches Cv^2 over long time intervals, it means that the next spike depends on the previous one
-- ISI
-    What is the chance for a spike t seconds after the previous
-- TIH
-    Histogram of time difference between adjacent spikes (so of ISI)
-- Survivor function
-    probability neuron stays quiet for time t after previous spike, initial value is 1 and decreases to 0 as t approaches infinity 
-- Hazard function
-    independent probability to fire at any single point
-    mainly used to detect burst activity and refractory period
-    focuses on risk of an event happening regardless of history
-    basically rate at which survivor function decays
-    might get very noisy at the end because there are only few neurons that spike with such long ISI
-"""
 
 # Define time windows for analysis & extract spike times for descriptive metrics
 
@@ -449,8 +445,6 @@ plt.savefig(fano_plot_path, dpi=300, bbox_inches="tight")
 plt.close()
 print("Temporal Fano Factor plot saved:", fano_plot_path)
 
-# TODO we should consider having all plots with the same scale for better comparison
-
 # %% Evoked responses PSTH for water and sugar
 
 # Merge control and experimental dataasets 
@@ -465,9 +459,6 @@ exp_neurons, exp_water, exp_sugar, exp_cta = merge_datasets(exp_datasets)
 # Now produce 4 figures total: Pre & Post for Control, Pre & Post for Experimental
 plot_group_figures("Control", ctrl_neurons, ctrl_water, ctrl_sugar, ctrl_cta)
 plot_group_figures("Experimental", exp_neurons, exp_water, exp_sugar, exp_cta)
-
-# TODO I intentionally did not plot the PSTHs for each neuron separately bc 
-# I don't think that makes sense with the amount of data we're working with 
 
 # %% Correlograms pre to post CTA
 for file_name, ds in datasets.items():
@@ -494,7 +485,7 @@ for file_name, ds in datasets.items():
                             limit=0.02, time_window=post_window)
 
 # %% TIH, Survivor, Hazard
-# TODO need to change the time window we're looking at, way too large
+
 # Per-Neuron ISI Metrics for Each Recording
 # Define the base directory for saving per-neuron ISI metric plots (created new one because it was too messy otherwise)
 base_isi_dir = os.path.join(figures_dir, "ISI metrics per neuron")

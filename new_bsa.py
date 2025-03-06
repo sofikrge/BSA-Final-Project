@@ -1,4 +1,18 @@
+#%% 
+"""
+===========================================================
+BSA Final Assignment - Denise Jaeschke & Sofia Karageorgiou
+===========================================================
+"""
 #%%
+"""
+All our TODO s and ideas
+- maybe define a spike train class so that we can optimise the way we load our data over and over again?
+- I think I am pooling all neurons per file for some metrics which are only meaningful per neuron?
+
+"""
+
+#%% All imports
 import pickle
 import re
 import numpy as np
@@ -8,14 +22,6 @@ import matplotlib.pyplot as plt
 import glob
 import sys
 
-#%% 
-"""
-===========================================================
-BSA Final Assignment - Denise Jaeschke & Sofia Karageorgiou
-===========================================================
-"""
-
-# Import all of our helper functions which can be found under the functions folder
 from functions.load_dataset import load_dataset
 from functions.correlogram import correlogram
 from functions.plot_correlogram_matrix import plot_correlogram_matrix
@@ -29,6 +35,7 @@ from functions.compute_cv_isi import compute_cv_isi
 from functions.merge_datasets import merge_datasets
 from functions.plot_stacked_raster_and_psth import plot_stacked_raster_and_psth
 from functions.plot_group_figures import plot_group_figures
+from functions.plot_isi_metrics_single_neurons import plot_isi_metrics_single_neuron
 
 #%% Step 1 Inspect data
 """
@@ -231,7 +238,7 @@ for file_path, file_name in zip(file_paths, file_names):
         "non_stimuli_time": non_stimuli_time
     }
     
-# Create a figure with 2x2 subplots and shared axes
+#%%  Create a figure with 2x2 subplots and shared axes
 fig, axes = plt.subplots(2, 2, figsize=(12, 10), sharex=True, sharey=True)
 axes = axes.flatten()
 
@@ -458,5 +465,61 @@ exp_neurons, exp_water, exp_sugar, exp_cta = merge_datasets(exp_datasets)
 # Now produce 4 figures total: Pre & Post for Control, Pre & Post for Experimental
 plot_group_figures("Control", ctrl_neurons, ctrl_water, ctrl_sugar, ctrl_cta)
 plot_group_figures("Experimental", exp_neurons, exp_water, exp_sugar, exp_cta)
+
+# TODO I intentionally did not plot the PSTHs for each neuron separately bc 
+# I don't think that makes sense with the amount of data we're working with 
+
+# %% Correlograms pre to post CTA
+for file_name, ds in datasets.items():
+    data = ds["data"]
+    neurons_data = ds["neurons"]
+    sacc_start = data.get("sacc drinking session start time", 0)
+    cta_time = data.get("CTA injection time", 0)
+    
+    # Determine max spike time among all neurons (to define post-CTA window)
+    max_spike_time = max((np.max(neuron[2]) for neuron in neurons_data if len(neuron[2]) > 0), default=0)
+    
+    # Define the pre-CTA time window: from saccharin drinking start to CTA injection.
+    pre_window = (sacc_start, cta_time)
+    # Define the post-CTA time window: from 3 hours after CTA until the last spike.
+    post_window = (cta_time + 3 * 3600, max_spike_time)
+    
+    # Plot pre-CTA correlogram using your helper function.
+    # This call saves a figure named "<file_name>_pre_correlogram.png" in your figures directory.
+    plot_correlogram_matrix(neurons_data, binsize=0.0005, dataset_name=f"{file_name}_pre",
+                            limit=0.02, time_window=pre_window)
+    
+    # Plot post-CTA correlogram similarly.
+    plot_correlogram_matrix(neurons_data, binsize=0.0005, dataset_name=f"{file_name}_post",
+                            limit=0.02, time_window=post_window)
+
+# %% TIH, Survivor, Hazard
+# TODO need to change the time window we're looking at, way too large
+# Per-Neuron ISI Metrics for Each Recording
+# Define the base directory for saving per-neuron ISI metric plots (created new one because it was too messy otherwise)
+base_isi_dir = os.path.join(figures_dir, "ISI metrics per neuron")
+os.makedirs(base_isi_dir, exist_ok=True)
+
+for file_name, ds in datasets.items():
+    data = ds["data"]
+    neurons = ds["neurons"]
+    
+    # Define the time window for analysis (e.g., non-stimulated phase)
+    time_window = ds["non_stimuli_time"]
+    
+    # Create a subfolder for this recording
+    save_dir = os.path.join(base_isi_dir, file_name)
+    os.makedirs(save_dir, exist_ok=True)
+    
+    print(f"Processing {file_name} with {len(neurons)} neurons.")
+    
+    # Loop over each neuron and save its ISI metrics plot
+    for i, neuron in enumerate(neurons):
+        neuron_title = f"{file_name} - Neuron {i+1} ISI Metrics"
+        neuron_save_path = os.path.join(save_dir, f"neuron_{i+1}_isi_metrics.png")
+        plot_isi_metrics_single_neuron(neuron, time_window, bins=50,
+                                       figure_title=neuron_title,
+                                       save_path=neuron_save_path)
+
 
 # %%

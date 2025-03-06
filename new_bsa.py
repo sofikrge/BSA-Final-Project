@@ -26,6 +26,9 @@ from functions.process_and_plot_dataset import process_and_plot_dataset
 from functions.find_outliers import find_outliers
 from functions.compute_fano_factor import compute_fano_factor
 from functions.compute_cv_isi import compute_cv_isi
+from functions.merge_datasets import merge_datasets
+from functions.plot_stacked_raster_and_psth import plot_stacked_raster_and_psth
+from functions.plot_group_figures import plot_group_figures
 
 #%% Step 1 Inspect data
 """
@@ -438,4 +441,22 @@ fano_plot_path = os.path.join(figures_dir, "fano_temporal.png")
 plt.savefig(fano_plot_path, dpi=300, bbox_inches="tight")
 plt.close()
 print("Temporal Fano Factor plot saved:", fano_plot_path)
+
+# TODO we should consider having all plots with the same scale for better comparison
+
+# %% Evoked responses PSTH for water and sugar
+
+# Merge control and experimental dataasets 
+# Group datasets into Control vs. Experimental based on file names
+control_datasets = {k: ds for k, ds in datasets.items() if "ctrl" in k.lower()}
+exp_datasets     = {k: ds for k, ds in datasets.items() if "exp" in k.lower()}
+
+# Merge control and experimental datasets
+ctrl_neurons, ctrl_water, ctrl_sugar, ctrl_cta = merge_datasets(control_datasets)
+exp_neurons, exp_water, exp_sugar, exp_cta = merge_datasets(exp_datasets)
+
+# Now produce 4 figures total: Pre & Post for Control, Pre & Post for Experimental
+plot_group_figures("Control", ctrl_neurons, ctrl_water, ctrl_sugar, ctrl_cta)
+plot_group_figures("Experimental", exp_neurons, exp_water, exp_sugar, exp_cta)
+
 # %%

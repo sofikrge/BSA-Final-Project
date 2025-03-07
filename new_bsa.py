@@ -9,17 +9,14 @@ import glob
 import sys
 
 from functions.load_dataset import load_dataset
-from functions.correlogram import correlogram
 from functions.plot_correlogram_matrix import plot_correlogram_matrix
 from functions.compute_firing_rates import compute_firing_rates
-from functions.compute_firing_rate_std import compute_firing_rate_std
 from functions.get_spike_times import get_spike_times
 from functions.process_and_plot_dataset import process_and_plot_dataset
 from functions.find_outliers import find_outliers
 from functions.compute_fano_factor import compute_fano_factor
 from functions.compute_cv_isi import compute_cv_isi
 from functions.merge_datasets import merge_datasets
-from functions.plot_stacked_raster_and_psth import plot_stacked_raster_and_psth
 from functions.plot_group_figures import plot_group_figures
 from functions.plot_isi_metrics_single_neurons import plot_isi_metrics_single_neuron
 
@@ -31,8 +28,7 @@ BSA Final Assignment - Denise Jaeschke & Sofia Karageorgiou
 """
 #%% All TODO s and ideas
 """
-- IMPORTANT SOFIA: Need to change saving directory bc its saving to the wrong folder rn 
-- maybe define a spike train class so that we can optimise the way we load our data over and over again?
+- IMPORTANT SOFIA: Need to change saving directory bc its saving to the wrong folder rn
 - I think I am pooling all neurons per file for some metrics which are only meaningful per neuron?
 - consider removing outliers?
 - comment out data inspection before submission maybe
@@ -100,6 +96,10 @@ Gameplan for exclusion
 - 2ms relative refractory period -> look at 4 bins, there should be close to none as we are looking at the unstimulated 
 phase and a very strong stimulus would be needed for a new spike
 - chose a conservative criterion because our biggest enemy too high is data loss
+
+--
+
+
 """
 
 #%% Step 1 Inspect data
@@ -169,7 +169,7 @@ data3, exp_rat_2_neurons_data, non_stimuli_time_3 = load_dataset(file_3)
 data4, exp_rat_3_neurons_data, non_stimuli_time_4 = load_dataset(file_4)
 
 # Debug print
-print(ctrl_rat_1_neurons_data[:5])  # Print first 5 neurons of ctrl_rat_1
+# print(ctrl_rat_1_neurons_data[:5])  # Print first 5 neurons of ctrl_rat_1
 
 """
 print("sacc_start_1:", sacc_start_1)
@@ -179,7 +179,7 @@ print("sacc_start_4:", sacc_start_4)
 """
 
 # Check if data is loaded properly
-print(ctrl_rat_1_neurons_data[:5])  # Print first 5 neurons of ctr_rat_1
+# print(ctrl_rat_1_neurons_data[:5])  # Print first 5 neurons of ctr_rat_1
 
 # Print the number of neurons for each dataset
 """ 

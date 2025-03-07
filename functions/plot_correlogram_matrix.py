@@ -3,13 +3,17 @@ import numpy as np
 import matplotlib.pyplot as plt
 from functions.correlogram import correlogram
 
-def plot_correlogram_matrix(neurons_data, binsize, dataset_name, limit=0.02, time_window=None):
+def plot_correlogram_matrix(neurons_data, binsize, dataset_name, limit=0.02, time_window=None, save_folder=None, store_data=True):
     # Sofia modified this such that we only compute the lower triangle and the upper one is simply mirrored
     
     num_neurons = len(neurons_data)
     fig, axes = plt.subplots(num_neurons, num_neurons, figsize=(num_neurons * 3, num_neurons * 3))
     
     print(f"Starting correlogram matrix for {dataset_name}")
+    
+    # Create a dictionary to store correlogram data if desired.
+    if store_data:
+        correlogram_data = {}
     
     for i, neuron_i in enumerate(neurons_data):
         for j, neuron_j in enumerate(neurons_data[:i+1]):  # Compute only for i >= j
@@ -25,15 +29,20 @@ def plot_correlogram_matrix(neurons_data, binsize, dataset_name, limit=0.02, tim
             
             # Compute correlogram
             counts, bins = correlogram(t1, t2=t2, binsize=binsize, limit=limit, auto=(i == j), density=False)
-
+            
             # Ensure counts and bins align correctly
             if len(counts) > len(bins) - 1:
                 counts = counts[:-1]
 
             bin_centers = (bins[:-1] + bins[1:]) / 2
 
+            # Minimal modification: store computed data if requested.
+            if store_data:
+                key = f"Neuron {i+1}" if i == j else f"Neuron {i+1} vs Neuron {j+1}"
+                correlogram_data[key] = {"counts": counts, "bins": bins}
+            
             # Set color dynamically
-            color = '#AAF0D1' if i == j else '#C9A0DC'  # Green for auto-correlation, purple for others
+            color = '#77DD77' if i == j else '#CDA4DE'  # Green for auto-correlation, purple for others
             
             # Plot in the matrix
             ax = axes[i, j] if num_neurons > 1 else axes
@@ -59,10 +68,12 @@ def plot_correlogram_matrix(neurons_data, binsize, dataset_name, limit=0.02, tim
     plt.suptitle(f"Cross-correlogram with (Bin Size = {binsize:.4f}s)", fontsize=16)  # Show bin size in title
     plt.tight_layout()
     
-    # Define relative save path
-    save_dir = os.path.join(os.getcwd(), "reports", "figures")  # Relative path
-    os.makedirs(save_dir, exist_ok=True)  # Ensure directory exists
-    save_path = os.path.join(save_dir, f"{dataset_name}_correlogram.png")
+    # If save_folder is provided, use it; otherwise, use the default relative path
+    if save_folder is None:
+        save_folder = os.path.join(os.getcwd(), "reports", "figures")
+    
+    os.makedirs(save_folder, exist_ok=True)
+    save_path = os.path.join(save_folder, f"{dataset_name}_correlogram.png")
 
     # Save the figure
     plt.savefig(save_path, dpi=300, bbox_inches='tight')

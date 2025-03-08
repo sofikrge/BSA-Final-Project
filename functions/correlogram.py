@@ -1,7 +1,7 @@
 import numpy as np
 
-def correlogram(t1, t2=None, binsize=.00025, limit=.02, auto=False,
-                density=False):
+def correlogram(t1, t2=None, binsize=.0004, limit=.02, auto=False,
+                density=False, normalize=True):
     """Return crosscorrelogram of two spike trains.
     Essentially, this algorithm subtracts each spike time in t1
     from all of t2 and bins the results with np.histogram, though
@@ -84,13 +84,8 @@ def correlogram(t1, t2=None, binsize=.00025, limit=.02, auto=False,
     t1 = np.sort(t1)
     t2 = np.sort(t2)
 
-    # Determine the bin edges for the histogram
-    # Later we will rely on the symmetry of ⁠ bins ⁠ for undoing ⁠ swap_args ⁠
-    limit = float(limit)
-
-    # The numpy.arange method overshoots slightly the edges i.e. binsize + epsilon
-    # which leads to inclusion of spikes falling on edges.
-    num_bins = int(2 * limit / binsize)  # e.g., 2*0.02/0.0005 = 80
+    # Generate bin edges with np.linspace to avoid floating-point issues
+    num_bins = int(2 * limit / binsize)
     bins = np.linspace(-limit, limit, num_bins + 1)
 
     # Determine the indexes into ⁠ t2 ⁠ that are relevant for each spike in ⁠ t1 ⁠
@@ -107,6 +102,7 @@ def correlogram(t1, t2=None, binsize=.00025, limit=.02, auto=False,
     count, bins = np.histogram(big, bins=bins, density=density)
 
     if auto:
+        # Peak at zero because: sum of all spikes in a train
         # Compensate for the peak at time zero that results in autocorrelations
         # by subtracting the total number of spikes from that bin. Note
         # possible numerical issue here because 0.0 may fall at a bin edge.
@@ -119,5 +115,19 @@ def correlogram(t1, t2=None, binsize=.00025, limit=.02, auto=False,
         # Here we rely on being able to simply reverse ⁠ counts ⁠. This is only
         # possible because of the way ⁠ bins ⁠ was defined (bins = -bins[::-1])
         count = count[::-1]
+
+    # Convert to float for safe division
+    counts = counts.astype(float)
+
+    # Optional normalization: divide by total no of spike pairs
+    #  * For cross-correlation: divide by len(t1)*len(t2) 
+    #  * For auto-correlation: divide by (len(t1)*len(t1)) if you want the same logic
+    #    or some other factor (like total spike pairs).
+    if normalize:
+        if auto:
+            denom = float(len(t1)) * float(len(t1))  # or len(t1) choose 2, depends on your convention
+        else:
+            denom = float(len(t1)) * float(len(t2))
+        counts /= denom
 
     return count, bins[1:]

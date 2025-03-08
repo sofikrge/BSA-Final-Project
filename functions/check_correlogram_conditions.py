@@ -56,11 +56,8 @@ def check_correlogram_conditions(t1=None, t2=None, binsize=0.0005, limit=0.02, a
     # Compute bin centers for information (not used for center calculation below)
     n_bins = len(counts)
     # Define center bins: if even, use the two middle bins; if odd, use the same middle bin for both.
-    if n_bins % 2 == 0:
-        center_left = n_bins // 2 - 1
-        center_right = n_bins // 2
-    else:
-        center_left = center_right = n_bins // 2
+    center_left = n_bins // 2 - 1
+    center_right = n_bins // 2
 
     # For autocorrelograms: condition A is if either center bin is non-empty.
     # Condition B is if the bin immediately to the left of center_left or right of center_right holds the global maximum.
@@ -83,6 +80,7 @@ def check_correlogram_conditions(t1=None, t2=None, binsize=0.0005, limit=0.02, a
             if condition_B:
                 reasons.append(f"global peak in neighbor bin (index: {global_peak_index})")
             results["reason"] = "; ".join(reasons)
+            
     elif corr_type == "cross":
         # For cross-correlograms, problematic if both center bins are empty.
         if left_center_val == 0 and right_center_val == 0:

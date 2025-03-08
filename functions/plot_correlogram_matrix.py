@@ -57,8 +57,6 @@ def plot_correlogram_matrix(neurons_data, binsize, dataset_name, limit=0.02, tim
             
             # Calculate the vertical line position as the average of the two center bin centers.
             center_line = (bin_centers[center_left] + bin_centers[center_right]) / 2
-            print(f"{'Neuron' if i==j else 'Neuron pair'} {key}: center_left index={center_left} (count={counts[center_left]}), "
-                  f"center_right index={center_right} (count={counts[center_right]}), vertical line at {center_line}")
             
             # Check if the current correlogram is problematic based on the center bins.
             # For autocorrelograms: problematic if either center bin is non-empty.
@@ -67,8 +65,6 @@ def plot_correlogram_matrix(neurons_data, binsize, dataset_name, limit=0.02, tim
                 is_problematic = (counts[center_left] > 0 or counts[center_right] > 0)
             else:       # cross-correlogram
                 is_problematic = (counts[center_left] == 0 and counts[center_right] == 0)
-            
-            print(f"{key}: is_problematic={is_problematic}")
             
             # Set color: if problematic, use pastel yellow; otherwise, use default.
             if is_problematic:
@@ -91,8 +87,7 @@ def plot_correlogram_matrix(neurons_data, binsize, dataset_name, limit=0.02, tim
                 center_left = center_right = n_bins // 2
             center_line = (bin_centers[center_left] + bin_centers[center_right]) / 2
             
-            ax.axvline(center_line, color='black', linestyle='--', linewidth=1)
-
+            ax.axvline(center_line, color='black', linestyle='--', linewidth=0.5)
             
             # Overlay the central bin(s) in pastel pink (for both auto and cross)
             pink_color = '#FFB6C1'
@@ -118,7 +113,7 @@ def plot_correlogram_matrix(neurons_data, binsize, dataset_name, limit=0.02, tim
                 ax_mirror.set_xlim(-limit, limit)
                 ax_mirror.set_xticks([])
                 ax_mirror.set_yticks([])
-                ax_mirror.axvline(-center_line, color='black', linestyle='--', linewidth=1)
+                ax_mirror.axvline(-center_line, color='black', linestyle='--', linewidth=0.5)
                 ax_mirror.bar(-bin_centers[center_left:center_left+1],
                               counts[center_left:center_left+1],
                               width=np.diff(bins)[center_left:center_left+1],

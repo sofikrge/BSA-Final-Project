@@ -55,7 +55,7 @@ def correlogram(t1, t2=None, binsize=.0004, limit=.02, auto=False,
         count/density of spikes in each bin.
     Note
     ----
-    ⁠ bins ⁠ are relative to ⁠ t1 ⁠. That is, if ⁠ t1 ⁠ leads ⁠ t2 ⁠, then
+    bins are relative to t1⁠. That is, if ⁠ t1 ⁠ leads ⁠ t2 ⁠, then
     ⁠ count ⁠ will peak in a positive time bin.
 
     """

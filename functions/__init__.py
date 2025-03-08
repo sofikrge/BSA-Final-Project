@@ -12,6 +12,9 @@ from .merge_datasets import merge_datasets
 from .plot_stacked_raster_and_psth import plot_stacked_raster_and_psth
 from .plot_group_figures import plot_group_figures
 from .plot_isi_metrics_single_neurons import plot_isi_metrics_single_neuron
-from .check_correlogram_conditions import check_correlogram_conditions
 
-__all__ = ["check_correlogram_conditions","plot_isi_metrics","plot_stacked_raster_and_psth","plot_group_figures","merge_datasets","load_dataset","compute_fano_factor","compute_cv_isi" ,"correlogram", "plot_correlogram_matrix", "compute_firing_rates", "compute_firing_rate_std", "get_spike_times", "process_and_plot_dataset", "find_outliers"]
+__all__ = ["central_bins_mean_std","plot_isi_metrics",
+           "plot_stacked_raster_and_psth","plot_group_figures","merge_datasets",
+           "load_dataset","compute_fano_factor","compute_cv_isi" ,"correlogram", 
+           "plot_correlogram_matrix", "compute_firing_rates", "compute_firing_rate_std", 
+           "get_spike_times", "process_and_plot_dataset", "find_outliers"]

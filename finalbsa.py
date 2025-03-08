@@ -18,7 +18,6 @@ from functions.load_dataset import load_dataset
 from functions.plot_correlogram_matrix import plot_correlogram_matrix
 from functions.check_correlogram_conditions import check_correlogram_conditions
 
-
 from functions.compute_firing_rates import compute_firing_rates
 from functions.get_spike_times import get_spike_times
 from functions.process_and_plot_dataset import process_and_plot_dataset
@@ -109,11 +108,12 @@ TODO
 """
 # Bin sizes dictionary
 binsizes = { # We chose 0.0005s for all datasets because of our exclusion criteria
-    "ctrl_rat_1": 0.0005,
-    "ctrl_rat_2": 0.0005,
-    "exp_rat_2": 0.0005,
-    "exp_rat_3": 0.0005
+    "ctrl_rat_1": 0.00025,
+    "ctrl_rat_2": 0.00025,
+    "exp_rat_2": 0.00025,
+    "exp_rat_3": 0.00025
 }
+
 # Example dictionary of datasets:
 datasets = {
     "ctrl_rat_1": (ctrl_rat_1_neurons_data, non_stimuli_time_1),

@@ -2,6 +2,7 @@ import os
 import numpy as np
 import matplotlib.pyplot as plt
 from functions.correlogram import correlogram
+from matplotlib import patches as mpatches
 
 def plot_correlogram_matrix(neurons_data, binsize, dataset_name, limit=0.02, time_window=None, save_folder=None, store_data=True):
     # Sofia modified this such that we only compute the lower triangle and the upper one is simply mirrored
@@ -30,11 +31,13 @@ def plot_correlogram_matrix(neurons_data, binsize, dataset_name, limit=0.02, tim
             # Compute correlogram
             counts, bins = correlogram(t1, t2=t2, binsize=binsize, limit=limit, auto=(i == j), density=False)
             
-            # Ensure counts and bins align correctly
+           # Instead of np.arange, we use np.linspace to force the correct number of bins.
+            num_bins = int(2 * limit / binsize)  # Expected number of bins
+            bins = np.linspace(-limit, limit, num_bins + 1)
             if len(counts) > len(bins) - 1:
                 counts = counts[:-1]
-
-            # Calculate bin centers
+            
+            # Compute bin centers.
             bin_centers = (bins[:-1] + bins[1:]) / 2
 
             # Minimal modification: store computed data if requested.
@@ -52,9 +55,10 @@ def plot_correlogram_matrix(neurons_data, binsize, dataset_name, limit=0.02, tim
                 # Odd number of bins: use the middle bin for both.
                 center_left = center_right = n_bins // 2
             
-            # For debugging, print the center indices and their counts.
+            # Calculate the vertical line position as the average of the two center bin centers.
+            center_line = (bin_centers[center_left] + bin_centers[center_right]) / 2
             print(f"{'Neuron' if i==j else 'Neuron pair'} {key}: center_left index={center_left} (count={counts[center_left]}), "
-                  f"center_right index={center_right} (count={counts[center_right]})")
+                  f"center_right index={center_right} (count={counts[center_right]}), vertical line at {center_line}")
             
             # Check if the current correlogram is problematic based on the center bins.
             # For autocorrelograms: problematic if either center bin is non-empty.
@@ -74,13 +78,21 @@ def plot_correlogram_matrix(neurons_data, binsize, dataset_name, limit=0.02, tim
             
             # Plot in the matrix
             ax = axes[i, j] if num_neurons > 1 else axes
-            ax.bar(bin_centers, counts, width=np.diff(bins), align='center', color=color, alpha=0.7, edgecolor='k')
+            ax.bar(bin_centers, counts, width=np.diff(bins), align='center', color=color, alpha=0.7, edgecolor='k', linewidth=0.25)
             ax.set_xlim(-limit, limit)
             ax.set_xticks([])
             ax.set_yticks([])
             
             # Vertical line at center x=0
-            ax.axvline(0, color='black', linestyle='--', linewidth=1)  
+            if n_bins % 2 == 0:
+                center_left = n_bins // 2 - 1
+                center_right = n_bins // 2
+            else:
+                center_left = center_right = n_bins // 2
+            center_line = (bin_centers[center_left] + bin_centers[center_right]) / 2
+            
+            ax.axvline(center_line, color='black', linestyle='--', linewidth=1)
+
             
             # Overlay the central bin(s) in pastel pink (for both auto and cross)
             pink_color = '#FFB6C1'
@@ -90,22 +102,33 @@ def plot_correlogram_matrix(neurons_data, binsize, dataset_name, limit=0.02, tim
                 counts[center_left:center_left+1],
                 width=np.diff(bins)[center_left:center_left+1],
                 align='center',
-                color=pink_color, alpha=1, edgecolor='k')
-            # Overlay the right center bin in pastel pink (always)
+                color=pink_color, alpha=1, edgecolor='k', linewidth=0.25)
+            # Overlay the right center bin in pastel pink
             ax.bar(bin_centers[center_right:center_right+1],
                 counts[center_right:center_right+1],
                 width=np.diff(bins)[center_right:center_right+1],
                 align='center',
-                color=pink_color, alpha=1, edgecolor='k')
+                color=pink_color, alpha=1, edgecolor='k', linewidth=0.25)
 
             
-            # Mirror results
+            # Mirror for upper triangle.
             if i != j:
                 ax_mirror = axes[j, i] if num_neurons > 1 else axes
-                ax_mirror.bar(-bin_centers, counts, width=np.diff(bins), align='center', color=color, alpha=0.7, edgecolor='k')
+                ax_mirror.bar(-bin_centers, counts, width=np.diff(bins), align='center', color=color, alpha=0.7, edgecolor='k', linewidth=0.25)
                 ax_mirror.set_xlim(-limit, limit)
                 ax_mirror.set_xticks([])
                 ax_mirror.set_yticks([])
+                ax_mirror.axvline(-center_line, color='black', linestyle='--', linewidth=1)
+                ax_mirror.bar(-bin_centers[center_left:center_left+1],
+                              counts[center_left:center_left+1],
+                              width=np.diff(bins)[center_left:center_left+1],
+                              align='center',
+                              color=pink_color, alpha=1, edgecolor='k', linewidth=0.25)
+                ax_mirror.bar(-bin_centers[center_right:center_right+1],
+                              counts[center_right:center_right+1],
+                              width=np.diff(bins)[center_right:center_right+1],
+                              align='center',
+                              color=pink_color, alpha=1, edgecolor='k', linewidth=0.25)
 
             # Labels for the first row and first column
             if i == 0:
@@ -115,6 +138,14 @@ def plot_correlogram_matrix(neurons_data, binsize, dataset_name, limit=0.02, tim
 
     plt.suptitle(f"Cross-correlogram with (Bin Size = {binsize:.4f}s)", fontsize=16)  # Show bin size in title
     plt.tight_layout()
+
+    # Create legend patches
+    patch_auto = mpatches.Patch(color='#77DD77', label='Autocorrelogram (non-problematic)')
+    patch_cross = mpatches.Patch(color='#CDA4DE', label='Cross-correlogram (non-problematic)')
+    patch_prob = mpatches.Patch(color='#FFFF99', label='Problematic')
+    patch_center = mpatches.Patch(color='#FFB6C1', label='Center bins')
+    # Add a figure-level legend.
+    fig.legend(handles=[patch_auto, patch_cross, patch_prob, patch_center], loc='upper right', ncol=1)
     
     # If save_folder is provided, use it; otherwise, use the default relative path
     if save_folder is None:

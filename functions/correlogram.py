@@ -1,6 +1,6 @@
 import numpy as np
 
-def correlogram(t1, t2=None, binsize=.0005, limit=.02, auto=False,
+def correlogram(t1, t2=None, binsize=.00025, limit=.02, auto=False,
                 density=False):
     """Return crosscorrelogram of two spike trains.
     Essentially, this algorithm subtracts each spike time in t1
@@ -90,9 +90,9 @@ def correlogram(t1, t2=None, binsize=.0005, limit=.02, auto=False,
 
     # The numpy.arange method overshoots slightly the edges i.e. binsize + epsilon
     # which leads to inclusion of spikes falling on edges.
-    bins = np.arange(-limit, limit + binsize, binsize)
-    print(f"Number of bins: {len(bins)-1}")
-    
+    num_bins = int(2 * limit / binsize)  # e.g., 2*0.02/0.0005 = 80
+    bins = np.linspace(-limit, limit, num_bins + 1)
+
     # Determine the indexes into ⁠ t2 ⁠ that are relevant for each spike in ⁠ t1 ⁠
     ii2 = np.searchsorted(t2, t1 - limit)
     jj2 = np.searchsorted(t2, t1 + limit)

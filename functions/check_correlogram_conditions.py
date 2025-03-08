@@ -1,24 +1,28 @@
 import numpy as np
 from functions.correlogram import correlogram
 
-def check_correlogram_conditions(t1, t2=None, binsize=0.0005, limit=0.02, auto=False,
-                         density=False, neuron_id="unknown", corr_type="auto"):
+def check_correlogram_conditions(t1=None, t2=None, binsize=0.0005, limit=0.02, auto=False,
+                                 density=False, neuron_id="unknown", corr_type="auto", hist_data=None):
     """
-    Computes a correlogram using your existing 'correlogram' function,
-    then checks conditions on the central adjacent bins.
-    
-    For autocorrelograms (corr_type="auto"):
-      - It checks if the bins immediately left and right of center are non-empty.
-      - It also checks if one of these adjacent bins holds the global peak.
-    
-    For cross-correlograms (corr_type="cross"):
-      - It only checks that the bins immediately left and right of center are empty.
-    
+    Checks conditions on the correlogram histogram to flag problematic neurons.
+
+    If 'hist_data' is provided (a dictionary with keys "counts" and "bins"),
+    it uses that data directly; otherwise, it computes the correlogram from the provided spike times.
+
+    For an autocorrelogram (corr_type="auto"), a neuron is flagged as problematic if:
+      - (A) At least one of the two center bins (the middle two bins for an even number of bins)
+          is non-empty, OR
+      - (B) The bin immediately to the left of the left center bin or the bin immediately to the right
+          of the right center bin contains the global maximum.
+          
+    For a cross-correlogram (corr_type="cross"), a neuron pair is flagged as problematic if:
+      - Both center bins are empty.
+
     Parameters:
-      t1 : np.array
-          Spike times for the first neuron.
+      t1 : np.array or None
+          Spike times for the first neuron (used if hist_data is not provided).
       t2 : np.array or None
-          Spike times for the second neuron. If None and auto is True, t1 is used.
+          Spike times for the second neuron (used if hist_data is not provided).
       binsize : float
           Width of each histogram bin in seconds.
       limit : float
@@ -26,54 +30,63 @@ def check_correlogram_conditions(t1, t2=None, binsize=0.0005, limit=0.02, auto=F
       auto : bool
           If True, compute an autocorrelogram (t2 is set to t1).
       density : bool
-          If True, the histogram is normalized to form a density.
+          If True, compute a density histogram.
       neuron_id : str or int
-          Identifier (name or number) for the neuron (or neuron pair).
+          Identifier for the neuron (or neuron pair).
       corr_type : str
           "auto" for autocorrelogram or "cross" for cross-correlogram.
+      hist_data : dict or None
+          Precomputed histogram data with keys "counts" and "bins".
     
     Returns:
       results : dict
-          Dictionary with keys describing the check results and the computed histogram.
+          A dictionary with:
+            "problematic": True/False,
+            "reason": A string explanation of which condition was met.
     """
-    # Compute the correlogram using your existing function.
-    counts, bins = correlogram(t1, t2=t2, binsize=binsize, limit=limit, auto=auto, density=density)
+    # Use precomputed histogram data if available.
+    if hist_data is not None:
+        counts = hist_data.get("counts")
+        bins = hist_data.get("bins")
+    else:
+        counts, bins = correlogram(t1, t2=t2, binsize=binsize, limit=limit, auto=auto, density=density)
+        if len(counts) > len(bins) - 1:
+            counts = counts[:-1]
     
-    # Assuming the returned bins array is for the right bin edges, the number of bins is len(counts).
-    center = len(counts) // 2  # index of the center bin
-    left_count = counts[center - 1]
-    right_count = counts[center + 1] if center + 1 < len(counts) else 0
+    # Compute bin centers for information (not used for center calculation below)
+    n_bins = len(counts)
+    # Define center bins: if even, use the two middle bins; if odd, use the same middle bin for both.
+    if n_bins % 2 == 0:
+        center_left = n_bins // 2 - 1
+        center_right = n_bins // 2
+    else:
+        center_left = center_right = n_bins // 2
 
-    results = {}
+    # For autocorrelograms: condition A is if either center bin is non-empty.
+    # Condition B is if the bin immediately to the left of center_left or right of center_right holds the global maximum.
+    left_center_val = counts[center_left]
+    right_center_val = counts[center_right]
+    
+    results = {"problematic": False, "reason": ""}
     
     if corr_type == "auto":
-        # Check if the adjacent bins are non-empty.
-        if left_count > 0 and right_count > 0:
-            results["central_bins_non_empty"] = True
-            print(f"Autocorrelogram: Neuron {neuron_id} has non-empty adjacent bins "
-                  f"(left: {left_count}, right: {right_count}).")
-        else:
-            results["central_bins_non_empty"] = False
-        
-        # Check if one of the adjacent bins holds the global peak.
+        condition_A = (left_center_val > 0 or right_center_val > 0)
+        # Check neighbors if they exist.
         global_peak_index = int(np.argmax(counts))
-        if global_peak_index in [center - 1, center + 1]:
-            results["global_peak_adjacent"] = True
-            print(f"Autocorrelogram: Neuron {neuron_id} has its global peak in an adjacent bin "
-                  f"(global peak index: {global_peak_index}).")
-        else:
-            results["global_peak_adjacent"] = False
-            
+        condition_B = (global_peak_index == center_left - 1 or global_peak_index == center_right + 1)
+        
+        if condition_A or condition_B:
+            results["problematic"] = True
+            reasons = []
+            if condition_A:
+                reasons.append(f"center bins non-empty (left: {left_center_val}, right: {right_center_val})")
+            if condition_B:
+                reasons.append(f"global peak in neighbor bin (index: {global_peak_index})")
+            results["reason"] = "; ".join(reasons)
     elif corr_type == "cross":
-        # For cross-correlograms, only check that the adjacent bins are empty.
-        if left_count == 0 and right_count == 0:
-            results["central_bins_empty"] = True
-            print(f"Cross-correlogram: Neuron pair {neuron_id} has empty adjacent bins "
-                  f"(left: {left_count}, right: {right_count}).")
-        else:
-            results["central_bins_empty"] = False
-
-    # Return the results along with the computed histogram for further use if needed.
-    results["counts"] = counts
-    results["bins"] = bins
+        # For cross-correlograms, problematic if both center bins are empty.
+        if left_center_val == 0 and right_center_val == 0:
+            results["problematic"] = True
+            results["reason"] = "both center bins are empty"
+    
     return results

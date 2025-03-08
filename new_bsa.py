@@ -97,9 +97,6 @@ Gameplan for exclusion
 phase and a very strong stimulus would be needed for a new spike
 - chose a conservative criterion because our biggest enemy too high is data loss
 
---
-
-
 """
 
 #%% Step 1 Inspect data

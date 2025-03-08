@@ -34,6 +34,7 @@ def plot_correlogram_matrix(neurons_data, binsize, dataset_name, limit=0.02, tim
             if len(counts) > len(bins) - 1:
                 counts = counts[:-1]
 
+            # Calculate bin centers
             bin_centers = (bins[:-1] + bins[1:]) / 2
 
             # Minimal modification: store computed data if requested.
@@ -41,8 +42,35 @@ def plot_correlogram_matrix(neurons_data, binsize, dataset_name, limit=0.02, tim
                 key = f"Neuron {i+1}" if i == j else f"Neuron {i+1} vs Neuron {j+1}"
                 correlogram_data[key] = {"counts": counts, "bins": bins}
             
-            # Set color dynamically
-            color = '#77DD77' if i == j else '#CDA4DE'  # Green for auto-correlation, purple for others
+            # --- New: Determine the center bins ---
+            n_bins = len(counts)
+            if n_bins % 2 == 0:
+                # Even number of bins: define the center as the two middle bins.
+                center_left = n_bins // 2 - 1
+                center_right = n_bins // 2
+            else:
+                # Odd number of bins: use the middle bin for both.
+                center_left = center_right = n_bins // 2
+            
+            # For debugging, print the center indices and their counts.
+            print(f"{'Neuron' if i==j else 'Neuron pair'} {key}: center_left index={center_left} (count={counts[center_left]}), "
+                  f"center_right index={center_right} (count={counts[center_right]})")
+            
+            # Check if the current correlogram is problematic based on the center bins.
+            # For autocorrelograms: problematic if either center bin is non-empty.
+            # For cross-correlograms: problematic if both center bins are empty.
+            if i == j:  # autocorrelogram
+                is_problematic = (counts[center_left] > 0 or counts[center_right] > 0)
+            else:       # cross-correlogram
+                is_problematic = (counts[center_left] == 0 and counts[center_right] == 0)
+            
+            print(f"{key}: is_problematic={is_problematic}")
+            
+            # Set color: if problematic, use pastel yellow; otherwise, use default.
+            if is_problematic:
+                color = '#FFFF99'  # Pastel yellow
+            else:
+                color = '#77DD77' if i == j else '#CDA4DE'
             
             # Plot in the matrix
             ax = axes[i, j] if num_neurons > 1 else axes
@@ -50,6 +78,26 @@ def plot_correlogram_matrix(neurons_data, binsize, dataset_name, limit=0.02, tim
             ax.set_xlim(-limit, limit)
             ax.set_xticks([])
             ax.set_yticks([])
+            
+            # Vertical line at center x=0
+            ax.axvline(0, color='black', linestyle='--', linewidth=1)  
+            
+            # Overlay the central bin(s) in pastel pink (for both auto and cross)
+            pink_color = '#FFB6C1'
+            # Highlight left center bin
+            # Overlay the left center bin in pastel pink
+            ax.bar(bin_centers[center_left:center_left+1],
+                counts[center_left:center_left+1],
+                width=np.diff(bins)[center_left:center_left+1],
+                align='center',
+                color=pink_color, alpha=1, edgecolor='k')
+            # Overlay the right center bin in pastel pink (always)
+            ax.bar(bin_centers[center_right:center_right+1],
+                counts[center_right:center_right+1],
+                width=np.diff(bins)[center_right:center_right+1],
+                align='center',
+                color=pink_color, alpha=1, edgecolor='k')
+
             
             # Mirror results
             if i != j:
@@ -78,5 +126,8 @@ def plot_correlogram_matrix(neurons_data, binsize, dataset_name, limit=0.02, tim
     # Save the figure
     plt.savefig(save_path, dpi=300, bbox_inches='tight')
     plt.close()  # Free memory
+    
+    if store_data:
+        return correlogram_data
 
     print(f"Correlogram saved: {save_path}")  # Confirm save location

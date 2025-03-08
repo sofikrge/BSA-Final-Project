@@ -114,16 +114,34 @@ binsizes = { # We chose 0.0005s for all datasets because of our exclusion criter
     "exp_rat_2": 0.0005,
     "exp_rat_3": 0.0005
 }
+# Example dictionary of datasets:
+datasets = {
+    "ctrl_rat_1": (ctrl_rat_1_neurons_data, non_stimuli_time_1),
+    "ctrl_rat_2": (ctrl_rat_2_neurons_data, non_stimuli_time_2),
+    "exp_rat_2":  (exp_rat_2_neurons_data, non_stimuli_time_3),
+    "exp_rat_3":  (exp_rat_3_neurons_data, non_stimuli_time_4)
+}
 
-save_folder = os.path.join(os.getcwd(), "reports", "figures")
+# Loop over each dataset
+# for dataset_name, (neurons_data, time_window) in datasets.items():
+#     # Plot and store correlogram data for this dataset
+#     correlogram_data = plot_correlogram_matrix(
+#         neurons_data=neurons_data,
+#         binsize=binsizes[dataset_name],
+#         dataset_name=dataset_name,
+#         time_window=time_window,
+#         save_folder=save_folder,
+#         store_data=True
+#     )
+    
+#     # Loop over each stored correlogram and check conditions.
+#     for key, data in correlogram_data.items():
+#         # Determine correlogram type: if "vs" is not in the key, assume autocorrelogram.
+#         corr_type = "auto" if "vs" not in key else "cross"
+#         result = check_correlogram_conditions(neuron_id=key, corr_type=corr_type, hist_data=data)
+#         if result["problematic"]:
+#             print(f"{dataset_name} - {key} is problematic: {result['reason']}")
 
-# Plot all 4 correlograms with our correlogram helper function using their respective bin sizes
-#plot_correlogram_matrix(ctrl_rat_1_neurons_data, binsize=binsizes["ctrl_rat_1"], dataset_name="ctrl_rat_1", time_window=non_stimuli_time_1, save_folder=save_folder)
-# plot_correlogram_matrix(ctrl_rat_2_neurons_data, binsize=binsizes["ctrl_rat_2"], dataset_name="ctrl_rat_2", time_window=non_stimuli_time_2, save_folder=save_folder)
-#plot_correlogram_matrix(exp_rat_2_neurons_data, binsize=binsizes["exp_rat_2"], dataset_name="exp_rat_2", time_window=non_stimuli_time_3, save_folder=save_folder)
-#plot_correlogram_matrix(exp_rat_3_neurons_data, binsize=binsizes["exp_rat_3"], dataset_name="exp_rat_3", time_window=non_stimuli_time_4, save_folder=save_folder)
-
-# Plot the correlogram matrix for ctrl_rat_2_neurons_data and store the computed histogram data.
 correlogram_data = plot_correlogram_matrix(
     neurons_data=ctrl_rat_2_neurons_data,
     binsize=binsizes["ctrl_rat_2"],
@@ -133,9 +151,12 @@ correlogram_data = plot_correlogram_matrix(
     store_data=True
 )
 
-# Now, you can use 'correlogram_data' with your check_correlogram_conditions helper.
+# Loop over each stored correlogram and print only those flagged as problematic.
 for key, data in correlogram_data.items():
-    result = check_correlogram_conditions(data["counts"], neuron_id=key, corr_type="auto" if "vs" not in key else "cross")
-    print(f"{key} analysis:", result)
+    # Determine correlogram type: if "vs" is not in the key, assume autocorrelogram.
+    corr_type = "auto" if "vs" not in key else "cross"
+    result = check_correlogram_conditions(neuron_id=key, corr_type=corr_type, hist_data=data)
+    if result["problematic"]:
+        print(f"{key} is problematic: {result['reason']}")
+# %% Exclude neurons based on the correlogram
 
-# %%

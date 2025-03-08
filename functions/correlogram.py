@@ -8,7 +8,30 @@ def correlogram(t1, t2=None, binsize=.0004, limit=.02, auto=False,
     several tweaks were made for efficiency.
     Originally authored by Chris Rodger, copied from OpenElectrophy, licenced
     with CeCill-B. Examples and testing written by exana team.
-
+    
+    
+    Sofia notes on this difference based approach: 
+    - A spike train can be thought of as a sum of delta functions at the spike times.
+    - When f and g are sums of delta functions this integral becomes a sum over the differences btw spike times t2 and t1
+    - Instead of computing the full convolution over a long, mostly-zero time series, the difference-based method calculates the differences
+        for all spike pairs where the difference is within a speicified window
+        -> done for each spik in t1, finding only those spikes in t2 that lie within the window
+        code uses np.searchsorted to easily identify range of indices in t2 that are relevant for t1
+    - once relevant time differences are collected into large array, histogram is computer over those differences
+    - for autocorrelogram every spike would match itself at t=0 (time lag zero) so that the bin would be artifiically high
+        common approach we learned about is to remove the center bin to focus on the correlation structure beyond trivial self-match
+    - normalise counts by dividing by total number of spike pairs so they are easier to compare
+    
+    In simpler terms
+    - for every spike in first list, look at spikes in second list that happened around the same time 
+    - then subtract the time of the spike in first list from time of each nearby spike in second list, gives you list of time difference lags
+    then group time differences into small time bins: for each bin you count how many spike pairs had a time difference that falls into that bin
+    - histogram shows for each time delay how many spikes occurred with that delay
+    
+    Why this code is efficient
+    - instead of creating huge vector of zeros and then performing operations, we work directly with spike times
+    - only compute differences for spikes that are actually close enough, reducing no of operations compared to full convolution
+        
     Parameters
     ---------
     t1 : np.array
@@ -24,10 +47,7 @@ def correlogram(t1, t2=None, binsize=.0004, limit=.02, auto=False,
         this case ⁠ t2 ⁠ can be None. Default is False.
     density : bool
         If True, then returns the probability density function.
-    See also
-    --------
-    :func:⁠ numpy.histogram ⁠ : The histogram function in use.
-
+    
     Returns
     -------
     (count, bins) : tuple
@@ -38,33 +58,6 @@ def correlogram(t1, t2=None, binsize=.0004, limit=.02, auto=False,
     ⁠ bins ⁠ are relative to ⁠ t1 ⁠. That is, if ⁠ t1 ⁠ leads ⁠ t2 ⁠, then
     ⁠ count ⁠ will peak in a positive time bin.
 
-    Examples
-    --------
-    >>> t1 = np.arange(0, .5, .1)
-    >>> t2 = np.arange(0.1, .6, .1)
-    >>> limit = 1
-    >>> binsize = .1
-    >>> counts, bins = correlogram(t1=t1, t2=t2, binsize=binsize,
-    ...                            limit=limit, auto=False)
-    >>> counts
-    array([0, 0, 0, 0, 0, 0, 0, 1, 2, 3, 4, 5, 4, 3, 2, 1, 0, 0, 0, 0])
-
-    The interpretation of this result is that there are 5 occurences where
-    in the bin 0 to 0.1, i.e.
-
-    # TODO fix
-    # >>> idx = np.argmax(counts)
-    # >>> '%.1f, %.1f' % (abs(bins[idx - 1]), bins[idx])
-    # '0.0, 0.1'
-
-    The correlogram algorithm is identical to, but computationally faster than
-    the histogram of differences of each timepoint, i.e.
-
-    # TODO Fix the doctest
-    # >>> diff = [t2 - t for t in t1]
-    # >>> counts2, bins = np.histogram(diff, bins=bins)
-    # >>> np.array_equal(counts2, counts)
-    # True
     """
     if auto: t2 = t1
     # For auto-CCGs, make sure we use the same exact values
@@ -74,6 +67,7 @@ def correlogram(t1, t2=None, binsize=.0004, limit=.02, auto=False,
             'Time limit {} must be a '.format(limit) +
             'multiple of binsize {}'.format(binsize) +
             ' remainder = {}'.format(limit % binsize))
+    
     # For efficiency, ⁠ t1 ⁠ should be no longer than ⁠ t2 ⁠
     swap_args = False
     if len(t1) > len(t2):
@@ -117,7 +111,7 @@ def correlogram(t1, t2=None, binsize=.0004, limit=.02, auto=False,
         count = count[::-1]
 
     # Convert to float for safe division
-    counts = counts.astype(float)
+    count = count.astype(float)
 
     # Optional normalization: divide by total no of spike pairs
     #  * For cross-correlation: divide by len(t1)*len(t2) 
@@ -128,6 +122,6 @@ def correlogram(t1, t2=None, binsize=.0004, limit=.02, auto=False,
             denom = float(len(t1)) * float(len(t1))  # or len(t1) choose 2, depends on your convention
         else:
             denom = float(len(t1)) * float(len(t2))
-        counts /= denom
+        count /= denom
 
     return count, bins[1:]

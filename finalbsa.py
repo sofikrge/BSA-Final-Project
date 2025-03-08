@@ -111,6 +111,9 @@ binsizes = { # We chose 0.0004s for all datasets because of our exclusion criter
 # Immediately after a nerve impulse is triggered, an ordinary stimulus is not able to generate another impulse. This brief period is termed the refractory period. 
 # The refractory period consists of two phases—the absolute refractory period and the relative refractory period. The absolute refractory period lasts about 1/2500 of a second and is followed by the relative refractory period. 
 # During the relative refractory period, a higher intensity stimulus can trigger an impulse."
+
+# https://www.sciencedirect.com/topics/medicine-and-dentistry/refractory-period
+
     "ctrl_rat_1": 0.0004,
     "ctrl_rat_2": 0.0004,
     "exp_rat_2": 0.0004,

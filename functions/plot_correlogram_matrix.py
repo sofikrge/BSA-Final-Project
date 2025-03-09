@@ -98,9 +98,9 @@ def plot_correlogram_matrix(neurons_data, binsize, dataset_name, limit=0.02, tim
             # Check if the current correlogram is problematic.
             if i == j:  # autocorrelogram: problematic if either center bin exceeds threshold,
                         # or if the global peak is immediately outside the center bins.
-                condition_A = (counts[center_left] > global_threshold or counts[center_right] > global_threshold)
+                condition_A = (counts[center_left] > global_threshold and counts[center_right] > global_threshold)
                 global_peak_index = int(np.argmax(counts))
-                condition_B = (global_peak_index == center_left - 1 or global_peak_index == center_right + 1)
+                condition_B = (global_peak_index == center_left - 1 and global_peak_index == center_right + 1)
                 is_problematic = condition_A or condition_B
                 if is_problematic:
                     reasons = []

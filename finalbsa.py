@@ -159,27 +159,6 @@ for dataset_name, (neurons_data, time_window) in datasets.items():
     
     print(f"Saved filtered data for {dataset_name} to {output_path}")
 
-#%% Inspect new files EDIT BEFORE SUBMISSION TODO does not work
-
-# Use the base directory to build a relative path to the processed folder.
-processed_dir = os.path.join(base_dir, 'data', 'processed')
-
-# Define file names (make sure they match your saved filenames exactly).
-original_file = os.path.join(raw_dir, "ctrl rat 1.pkl")
-filtered_file = os.path.join(processed_dir, "ctrl_rat_1_filtered.pkl")
-
-# Load original and filtered datasets using the helper function.
-data_orig, neurons_orig, non_stimuli_time_orig = load_dataset(original_file)
-data_filtered, neurons_filtered, non_stimuli_time_filtered = load_dataset(filtered_file)
-
-print("Original neuron count:", len(neurons_orig))
-print("Filtered neuron count:", len(neurons_filtered))
-
-# Check how many and which ones were removed
-problematic_indices = correlogram_data.get("problematic_neuron_indices", set())
-print("Problematic indices:", problematic_indices)
-print("Number of problematic neurons:", len(problematic_indices))
-print("Difference in count:", len(neurons_orig) - len(neurons_filtered))
 #%%
 """
 =================================================================================================================================================================================
@@ -232,10 +211,10 @@ for dataset_name, (neurons_data, non_stimuli_time) in filtered_datasets.items():
     print(f"Filtered dataset {dataset_name}: {problematic_count} out of {total_neurons} neurons are problematic.")
 """
 This check showed us that based on our criterion: 
-- Dataset ctrl_rat_1: 21 out of 27 neurons are problematic.
-- Dataset ctrl_rat_2: 2 out of 4 neurons are problematic.
-- Dataset exp_rat_2: 13 out of 13 neurons are problematic.
-- Dataset exp_rat_3: 15 out of 25 neurons are problematic.
+- Filtered dataset ctrl_rat_1: 14 out of 15 neurons are problematic.
+- Filtered dataset ctrl_rat_2: 1 out of 1 neurons are problematic.
+- Filtered dataset exp_rat_2: 12 out of 12 neurons are problematic.
+- Filtered dataset exp_rat_3: 7 out of 7 neurons are problematic.
 
 That would force us to remove a lot of neurons. 
 We were thinking about removing spikes that are too close to each other, 

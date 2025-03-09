@@ -92,7 +92,8 @@ Now we know we have 27 neurons recorded for ctr rat 1, 4 for ctr rat 2, 13 for e
 =================================================================================================================================================================================
 Notes on process
 - first did 0-tolerance plotting, almost all neurons would have to be excluded
-- thought about noise, distant neurons affecting the recording etc. -> decided to say that 
+- thought about noise, distant neurons affecting the recording etc. -> decided to say that mean + 2 stds of central bins of autocorrelogram are the threshold for autocorrelograms
+and for cross-correlograms we check whether the central bins are the minima within that correlogram. if they are, the correlogram is considered to be problematic
 
 """
 # Bin sizes dictionary

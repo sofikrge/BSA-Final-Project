@@ -7,9 +7,11 @@ from matplotlib.lines import Line2D
 from tqdm.auto import tqdm
 import sys
 
-# Definition of problematic correlograms:
-# for autocorrelograms: if either center bin exceeds global_threshold (mean + 2 stds of all correlogram center bins), or if the global peak is immediately outside the center bins.
-# for cross-correlograms: if both center bins are the minima for the correlogram
+"""
+Definition of problematic correlograms:
+- for autocorrelograms: if either center bin exceeds global_threshold (mean + 2 stds of all correlogram center bins), or if the global peak is immediately outside the center bins.
+- for cross-correlograms: if both center bins are the minima for the correlogram
+"""
 
 def plot_correlogram_matrix(neurons_data, binsize, dataset_name, limit=0.02, time_window=None, save_folder=None, store_data=True):
     # Removed the global_threshold argument; it will be computed from the data.

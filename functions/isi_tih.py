@@ -51,8 +51,6 @@ def isi_tih(spike_times, binsize=0.0004, min_interval=1/2500, neuron_id=None, bi
     
     # Identify and print problematic ISIs
     problematic_isis = isis[isis < min_interval]
-    print(f"Neuron {neuron_id} problematic ISIs (spikes too close):")
-    print(problematic_isis)
     
     # Build the output directory using the provided save_folder.
     output_dir = os.path.join(save_folder, dataset_name)

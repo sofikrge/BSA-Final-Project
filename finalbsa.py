@@ -16,6 +16,9 @@ import sys
 from functions.load_dataset import load_dataset
 from functions.plot_correlogram_matrix import plot_correlogram_matrix
 from functions.isi_tih import isi_tih
+from functions.analyze_firing_rates import analyze_firing_rates
+from functions.cv_fano import analyze_variability
+
 
 save_folder = os.path.join(os.getcwd(), "reports", "figures") # folder for figures
 base_dir = os.path.dirname(os.path.abspath(__file__)) # Get the directory of the current file
@@ -141,20 +144,10 @@ for dataset_name, (neurons_data, time_window) in datasets.items():
     # Retrieve problematic indices from the returned dictionary
     problematic_neuron_indices = correlogram_data.get("problematic_neuron_indices", set())
     print(f"Problematic indices for {dataset_name}: {problematic_neuron_indices}")
-    
-    # Filter out problematic neurons.
-    filtered_neurons_data = [neuron for idx, neuron in enumerate(neurons_data)
-                             if idx not in problematic_neuron_indices]
-    
-    filtered_out_count = len(neurons_data) - len(filtered_neurons_data)
-    print(f"Filtered out {filtered_out_count} neurons for {dataset_name}: {sorted(problematic_neuron_indices)}")
-
 #%% Apply manual filter
 """
-
 Define a manual filter: specify which neuron indices to fuse for each dataset
 As the autocorrelograms don't look faulty, we decided to fuse neurons that are likely to be the same neuron
-
 """
 dataset_files = {
     "ctrl_rat_1": ("ctrl rat 1.pkl", "ctrl_rat_1_filtered.pkl"),
@@ -165,7 +158,7 @@ dataset_files = {
 
 manual_fusion = {
     "ctrl_rat_1": [{0, 2}, {21, 22, 23, 24}], 
-    "ctrl_rat_2": [{0, 1, 2}], # fuse 0 1 and 2 into one neuron
+    "ctrl_rat_2": [{0, 1, 2}], # e.g. meaning: fuse 0 1 and 2 into one neuron
     "exp_rat_2": [],  
     "exp_rat_3": [{0, 1}, {2, 6, 20}, {9, 10}, {11,12}, {13,14,}] 
 }
@@ -227,8 +220,13 @@ for dataset_name, (neurons_data, time_window) in datasets.items():
 =================================================================================================================================================================================
 1.2 Exclusion criterion: Remove individual spikes with ISI below absolute refractory period
 =================================================================================================================================================================================
+"""
+"""
 As we were quite lenient with our sorting in the previous criterion, we will now sort out the spikes that are too close to each other 
 and are likely to be noise. We will use the absolute refractory period of 1/2500s to filter out these spikes.
+
+We searched literature but could not find a paper that explicitly mentioned fitlering out spikes occurring in the absolute refractory period
+so we did not do it.
 """
 
 # Define a dictionary mapping dataset names to filtered file names.
@@ -275,10 +273,10 @@ for dataset_name, (neurons_data, non_stimuli_time) in filtered_datasets.items():
 
 """
 This check showed us that based on our criterion: 
-- Filtered dataset ctrl_rat_1: 14 out of 15 neurons are problematic.
-- Filtered dataset ctrl_rat_2: 1 out of 1 neurons are problematic.
-- Filtered dataset exp_rat_2: 12 out of 12 neurons are problematic.
-- Filtered dataset exp_rat_3: 7 out of 7 neurons are problematic.
+- Filtered dataset ctrl_rat_1: 20 out of 23 neurons problematic
+- Filtered dataset ctrl_rat_2: 2 out of 2 neurons are problematic.
+- Filtered dataset exp_rat_2: 13 out of 13 neurons are problematic.
+- Filtered dataset exp_rat_3: 11 out of 19 neurons are problematic.
 
 That would force us to remove a lot of neurons. 
 We were thinking about removing spikes that are too close to each other, 
@@ -286,3 +284,49 @@ but we decided to keep them for now as we did not find this mentioned in similar
 """
 
 # %%
+"""
+=================================================================================================================================================================================
+2. Firing parameters in non-stimulated epochs across time - Compare pre-CTA to post-CTA
+=================================================================================================================================================================================
+"""
+
+"""
+Overview of this section: 
+1. Firing Rates Across Time Windows for Each Recording + Group level firing rates
+3. Fano factor + CV
+4. PSTH
+5. Correlograms Pre and Post CTA
+6. TIH, Survivor function and Hazard function
+"""
+
+# Define a dictionary mapping dataset names to filtered file names.
+filtered_files = {
+    "ctrl_rat_1": "ctrl_rat_1_filtered.pkl",
+    "ctrl_rat_2": "ctrl_rat_2_filtered.pkl",
+    "exp_rat_2":  "exp_rat_2_filtered.pkl",
+    "exp_rat_3":  "exp_rat_3_filtered.pkl"
+}
+
+filtered_datasets = {}
+# Build a dictionary of filtered datasets using the load_dataset helper function
+filtered_datasets = {}
+for name, filename in filtered_files.items():
+    file_path = os.path.join(processed_dir, filename)
+    data, neurons, non_stimuli_time = load_dataset(file_path)
+    filtered_datasets[name] = (neurons, non_stimuli_time)
+
+
+# Firing rates
+os.makedirs(save_folder, exist_ok=True)
+analyze_firing_rates(filtered_datasets, filtered_files, processed_dir, save_folder)
+
+# Fano factor and CV
+analyze_variability(filtered_datasets, processed_dir, filtered_files, save_folder)
+
+
+# %%
+"""
+=================================================================================================================================================================================
+3. Changes in Evoked Responses
+=================================================================================================================================================================================
+"""

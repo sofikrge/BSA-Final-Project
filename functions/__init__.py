@@ -13,8 +13,10 @@ from .plot_stacked_raster_and_psth import plot_stacked_raster_and_psth
 from .plot_group_figures import plot_group_figures
 from .plot_isi_metrics_single_neurons import plot_isi_metrics_single_neuron
 from .isi_tih import isi_tih
+from .analyze_firing_rates import analyze_firing_rates
+from .cv_fano import analyze_variability
 
-__all__ = ["isi_tih","plot_isi_metrics",
+__all__ = ["analyze_variability","analyze_firing_rates","isi_tih","plot_isi_metrics",
            "plot_stacked_raster_and_psth","plot_group_figures","merge_datasets",
            "load_dataset","compute_fano_factor","compute_cv_isi" ,"correlogram", 
            "plot_correlogram_matrix", "compute_firing_rates", "compute_firing_rate_std", 

@@ -15,6 +15,7 @@ from .plot_isi_metrics_single_neurons import plot_isi_metrics_single_neuron
 from .isi_tih import isi_tih
 from .analyze_firing_rates import analyze_firing_rates
 from .cv_fano import analyze_variability
+from .apply_manual_fusion import apply_manual_fusion
 
 __all__ = ["analyze_variability","analyze_firing_rates","isi_tih","plot_isi_metrics",
            "plot_stacked_raster_and_psth","plot_group_figures","merge_datasets",

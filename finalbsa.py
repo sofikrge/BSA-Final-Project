@@ -18,7 +18,7 @@ from functions.plot_correlogram_matrix import plot_correlogram_matrix
 from functions.isi_tih import isi_tih
 from functions.analyze_firing_rates import analyze_firing_rates
 from functions.cv_fano import analyze_variability
-
+from functions.apply_manual_fusion import apply_manual_fusion
 
 save_folder = os.path.join(os.getcwd(), "reports", "figures") # folder for figures
 base_dir = os.path.dirname(os.path.abspath(__file__)) # Get the directory of the current file
@@ -119,27 +119,15 @@ binsizes = {
     "exp_rat_3": 0.0004
 }
 
-# Example dictionary of datasets:
-datasets = {
-    "ctrl_rat_1": (ctrl_rat_1_neurons_data, non_stimuli_time_1),
-    "ctrl_rat_2": (ctrl_rat_2_neurons_data, non_stimuli_time_2),
-    "exp_rat_2":  (exp_rat_2_neurons_data, non_stimuli_time_3),
-    "exp_rat_3":  (exp_rat_3_neurons_data, non_stimuli_time_4)
-}
+# Dictionary of datasets:
+datasets = {"ctrl_rat_1": (ctrl_rat_1_neurons_data, non_stimuli_time_1),"ctrl_rat_2": (ctrl_rat_2_neurons_data, non_stimuli_time_2),"exp_rat_2":  (exp_rat_2_neurons_data, non_stimuli_time_3),"exp_rat_3":  (exp_rat_3_neurons_data, non_stimuli_time_4)}
 
 #%% Loop over each dataset and compute/check the correlogram matrix.
 for dataset_name, (neurons_data, time_window) in datasets.items():
     print(f"\nProcessing dataset: {dataset_name}")
     
     # Plot and store correlogram data for this dataset
-    correlogram_data = plot_correlogram_matrix(
-        neurons_data=neurons_data,
-        binsize=binsizes[dataset_name],
-        dataset_name=dataset_name,
-        time_window=time_window,
-        save_folder=os.path.join(save_folder, "Correlograms"),
-        store_data=True
-    )
+    correlogram_data = plot_correlogram_matrix(neurons_data=neurons_data,binsize=binsizes[dataset_name],dataset_name=dataset_name,time_window=time_window,save_folder=os.path.join(save_folder, "Correlograms"),store_data=True)
     
     # Retrieve problematic indices from the returned dictionary
     problematic_neuron_indices = correlogram_data.get("problematic_neuron_indices", set())
@@ -149,12 +137,7 @@ for dataset_name, (neurons_data, time_window) in datasets.items():
 Define a manual filter: specify which neuron indices to fuse for each dataset
 As the autocorrelograms don't look faulty, we decided to fuse neurons that are likely to be the same neuron
 """
-dataset_files = {
-    "ctrl_rat_1": ("ctrl rat 1.pkl", "ctrl_rat_1_filtered.pkl"),
-    "ctrl_rat_2": ("ctrl rat 2.pkl", "ctrl_rat_2_filtered.pkl"),
-    "exp_rat_2":  ("exp rat 2.pkl", "exp_rat_2_filtered.pkl"),
-    "exp_rat_3":  ("exp rat 3.pkl", "exp_rat_3_filtered.pkl")
-}
+dataset_files = {"ctrl_rat_1": ("ctrl rat 1.pkl", "ctrl_rat_1_filtered.pkl"),"ctrl_rat_2": ("ctrl rat 2.pkl", "ctrl_rat_2_filtered.pkl"),"exp_rat_2":  ("exp rat 2.pkl", "exp_rat_2_filtered.pkl"),"exp_rat_3":  ("exp rat 3.pkl", "exp_rat_3_filtered.pkl")}
 
 manual_fusion = {
     "ctrl_rat_1": [{0, 2}, {21, 22, 23, 24}], 
@@ -163,58 +146,8 @@ manual_fusion = {
     "exp_rat_3": [{0, 1}, {2, 6, 20}, {9, 10}, {11,12}, {13,14,}] 
 }
 
-# Loop over each dataset and apply the manual fusion.
-for dataset_name, (neurons_data, time_window) in datasets.items():
-    print(f"\nProcessing dataset: {dataset_name}")
-    total_neurons = len(neurons_data)
-    
-    # Get the fusion groups for this dataset.
-    fusion_groups = manual_fusion.get(dataset_name, [])
-    print("Manual fusion groups for", dataset_name, ":", [sorted(group) for group in fusion_groups])
-    
-    # Create a set of all indices that will be fused (union of all groups).
-    indices_to_fuse_all = set()
-    for group in fusion_groups:
-        indices_to_fuse_all.update(group)
-    
-    # Keep neurons that are not part of any fusion group.
-    neurons_not_fused = [neuron for idx, neuron in enumerate(neurons_data)
-                           if idx not in indices_to_fuse_all]
-    
-    # Now fuse neurons in each fusion group.
-    fused_neurons = []
-    for group in fusion_groups:
-        # Concatenate spike times from all neurons in this group.
-        group_spike_times = np.concatenate([neurons_data[idx][2] for idx in sorted(group)])
-        group_spike_times.sort()
-        
-        # Create a new neuron from one of the neurons in the group (using the smallest index).
-        fused_neuron = neurons_data[min(group)].copy()
-        fused_neuron[2] = group_spike_times  # Replace spike times with the fused spike times.
-        fused_neurons.append(fused_neuron)
-        print(f"Fused neurons {sorted(group)} into one.")
-    
-    # The final neuron list is the neurons not fused plus the newly fused neurons.
-    filtered_neurons_data = neurons_not_fused + fused_neurons
-    new_count = len(filtered_neurons_data)
-    filtered_out_count = total_neurons - new_count
-    print(f"Original neuron count: {total_neurons}, New neuron count: {new_count}.")
-    print(f"{filtered_out_count} neurons were fused (removed and replaced with {len(fused_neurons)} fused neurons).")
-    
-    # Reload the original full data to preserve metadata.
-    original_file = os.path.join(raw_dir, dataset_files[dataset_name][0])
-    data, _, _ = load_dataset(original_file)
-    data["neurons"] = filtered_neurons_data
-    
-    # Build the output filename with a "_filtered" suffix.
-    output_filename = dataset_name + "_filtered.pkl"
-    output_path = os.path.join(processed_dir, output_filename)
-    
-    # Save the updated dictionary as a pickle file.
-    with open(output_path, "wb") as f:
-        pickle.dump(data, f)
-    
-    print(f"Saved fused data for {dataset_name} to {output_path}")
+apply_manual_fusion(datasets, manual_fusion, dataset_files, raw_dir, processed_dir)
+
 #%%
 """
 =================================================================================================================================================================================
@@ -230,12 +163,7 @@ so we did not do it.
 """
 
 # Define a dictionary mapping dataset names to filtered file names.
-filtered_files = {
-    "ctrl_rat_1": "ctrl_rat_1_filtered.pkl",
-    "ctrl_rat_2": "ctrl_rat_2_filtered.pkl",
-    "exp_rat_2":  "exp_rat_2_filtered.pkl",
-    "exp_rat_3":  "exp_rat_3_filtered.pkl"
-}
+filtered_files = {"ctrl_rat_1": "ctrl_rat_1_filtered.pkl","ctrl_rat_2": "ctrl_rat_2_filtered.pkl","exp_rat_2":  "exp_rat_2_filtered.pkl","exp_rat_3":  "exp_rat_3_filtered.pkl"}
 
 filtered_datasets = {}
 # Build a dictionary of filtered datasets using the load_dataset helper function
@@ -254,15 +182,7 @@ for dataset_name, (neurons_data, non_stimuli_time) in filtered_datasets.items():
     # Process each neuron in the filtered dataset.
     for idx, neuron in enumerate(neurons_data):
         spike_times = neuron[2]  # Adjust according to your data structure.
-        _, problematic_isis = isi_tih(
-            spike_times,
-            binsize=0.0004,
-            min_interval=1/2500,
-            neuron_id=idx,
-            bins=50,
-            dataset_name=dataset_name,
-            save_folder="reports/figures/TIH",
-            time_window=non_stimuli_time
+        _, problematic_isis = isi_tih(spike_times,binsize=0.0004,min_interval=1/2500,neuron_id=idx,bins=50,dataset_name=dataset_name,save_folder="reports/figures/TIH",time_window=non_stimuli_time
         )
         # If there are any problematic ISIs, count this neuron as problematic.
         if problematic_isis.size > 0:
@@ -299,16 +219,9 @@ Overview of this section:
 6. TIH, Survivor function and Hazard function
 """
 
-# Define a dictionary mapping dataset names to filtered file names.
-filtered_files = {
-    "ctrl_rat_1": "ctrl_rat_1_filtered.pkl",
-    "ctrl_rat_2": "ctrl_rat_2_filtered.pkl",
-    "exp_rat_2":  "exp_rat_2_filtered.pkl",
-    "exp_rat_3":  "exp_rat_3_filtered.pkl"
-}
-
+# Define a dictionary mapping dataset names to filtered file names. TODO DELETE BEFORE SUBMISSION AS DUPLICATE
+filtered_files = {"ctrl_rat_1": "ctrl_rat_1_filtered.pkl","ctrl_rat_2": "ctrl_rat_2_filtered.pkl","exp_rat_2":  "exp_rat_2_filtered.pkl","exp_rat_3":  "exp_rat_3_filtered.pkl"}
 filtered_datasets = {}
-# Build a dictionary of filtered datasets using the load_dataset helper function
 filtered_datasets = {}
 for name, filename in filtered_files.items():
     file_path = os.path.join(processed_dir, filename)

@@ -3,7 +3,7 @@ import os
 import pickle
 from functions.load_dataset import load_dataset
 
-def apply_manual_fusion(datasets, manual_fusion, dataset_files, raw_dir, processed_dir):
+def apply_manual_fusion(datasets, manual_fusion, fusion_file_mapping, raw_dir, processed_dir):
     """
     Applies manual neuron fusion based on predefined groupings.
     """
@@ -45,7 +45,7 @@ def apply_manual_fusion(datasets, manual_fusion, dataset_files, raw_dir, process
         print(f"{filtered_out_count} neurons were fused (removed and replaced with {len(fused_neurons)} fused neurons).")
         
         # Reload the original full data to preserve metadata.
-        original_file = os.path.join(raw_dir, dataset_files[dataset_name][0])
+        original_file = os.path.join(raw_dir, fusion_file_mapping[dataset_name][0])
         data, _, _ = load_dataset(original_file)
         data["neurons"] = filtered_neurons_data
         

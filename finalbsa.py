@@ -4,7 +4,7 @@ BSA Final Assignment - Denise Jaeschke & Sofia Karageorgiou
 =================================================================================================================================================================================
 """
 
-#%% Imports and settings
+#%% Imports
 import pickle
 import re
 import numpy as np
@@ -20,37 +20,49 @@ from functions.analyze_firing_rates import analyze_firing_rates
 from functions.cv_fano import analyze_variability
 from functions.apply_manual_fusion import apply_manual_fusion
 
+# Loading files and folders
 save_folder = os.path.join(os.getcwd(), "reports", "figures") # folder for figures
 base_dir = os.path.dirname(os.path.abspath(__file__)) # Get the directory of the current file
 raw_dir = os.path.join(base_dir, 'data', 'raw') # raw data directory
-ctrl_1 = os.path.join(raw_dir, "ctrl rat 1.pkl")
-ctrl_2 = os.path.join(raw_dir, "ctrl rat 2.pkl")
-exp_2 = os.path.join(raw_dir, "exp rat 2.pkl")
-exp_3 = os.path.join(raw_dir, "exp rat 3.pkl")
 processed_dir = os.path.join(base_dir, 'data', 'processed') # processed data directory (after exclusions)
+os.makedirs(processed_dir, exist_ok=True)
 
-#
+# Define dataset file paths
+dataset_paths = {
+    "ctrl_rat_1": os.path.join(raw_dir, "ctrl rat 1.pkl"),
+    "ctrl_rat_2": os.path.join(raw_dir, "ctrl rat 2.pkl"),
+    "exp_rat_2": os.path.join(raw_dir, "exp rat 2.pkl"),
+    "exp_rat_3": os.path.join(raw_dir, "exp rat 3.pkl")
+}
+
+# Load datasets once at the beginning
+datasets = {}
+for name, path in dataset_paths.items():
+    data, neurons, non_stimuli_time = load_dataset(path)
+    datasets[name] = {"data": data, "neurons": neurons, "non_stimuli_time": non_stimuli_time}
+
+# Set binsize for each dataset
+binsizes = {key: 0.0004 for key in datasets.keys()}
+#%%
 """
 =================================================================================================================================================================================
 Preliminary steps: Understanding our dataset + Extracting the data we need
 =================================================================================================================================================================================
 """
-# Use the helper function to load a dataset
-data, neurons, non_stimuli_time = load_dataset(exp_2)
 
 """
-print(type(data))  # It should be a dictionary
-print(data.keys())  # Check the keys of the dictionary
+print(type(data3))  # It should be a dictionary
+print(data3.keys())  # Check the keys of the dictionary
 """
 
 """
 # Look at content of each key
-print("Event Times:", data["event_times"].keys())
-print("Event Times:", data["event_times"])
-print("Saccharin drinking start time:", data["sacc drinking session start time"])
-print("CTA injection time:", data["CTA injection time"])
-print("Number of neurons recorded:", len(data["neurons"]))
-print("Example neuron data:", data["neurons"][0])  # Checking the first neuron
+print("Event Times:", data3["event_times"].keys())
+print("Event Times:", data3["event_times"])
+print("Saccharin drinking start time:", data3["sacc drinking session start time"])
+print("CTA injection time:", data3["CTA injection time"])
+print("Number of neurons recorded:", len(data3["neurons"]))
+print("Example neuron data3:", data3["neurons"][0])  # Checking the first neuron
 """
 
 """
@@ -62,12 +74,6 @@ We got the following correctly and as expected:
 
 Now, we'll extract the spike data
 """
-
-# Load all data using helper function we defined
-data1, ctrl_rat_1_neurons_data, non_stimuli_time_1 = load_dataset(ctrl_1)
-data2, ctrl_rat_2_neurons_data, non_stimuli_time_2 = load_dataset(ctrl_2)
-data3, exp_rat_2_neurons_data, non_stimuli_time_3 = load_dataset(exp_2)
-data4, exp_rat_3_neurons_data, non_stimuli_time_4 = load_dataset(exp_3)
 
 """
 # Debug prints
@@ -109,16 +115,10 @@ Definition of problematic correlograms:
 - for cross-correlograms: if both center bins are the minima for the correlogram
 """
 
-# File path for processed data
-os.makedirs(processed_dir, exist_ok=True)
-
-binsizes = { "ctrl_rat_1": 0.0004,"ctrl_rat_2": 0.0004,"exp_rat_2": 0.0004,"exp_rat_3": 0.0004}
-
-# Dictionary of datasets:
-datasets = {"ctrl_rat_1": (ctrl_rat_1_neurons_data, non_stimuli_time_1),"ctrl_rat_2": (ctrl_rat_2_neurons_data, non_stimuli_time_2),"exp_rat_2":  (exp_rat_2_neurons_data, non_stimuli_time_3),"exp_rat_3":  (exp_rat_3_neurons_data, non_stimuli_time_4)}
-
 #%% Loop over each dataset and compute/check the correlogram matrix.
-for dataset_name, (neurons_data, time_window) in datasets.items():
+for dataset_name, dataset in datasets.items():
+    neurons_data = dataset["neurons"]
+    time_window = dataset["non_stimuli_time"]
     print(f"\nProcessing correlogram for dataset: {dataset_name}. Please be patient, this will take a while.")
     
     # Plot and store correlogram data for this dataset
@@ -132,7 +132,7 @@ for dataset_name, (neurons_data, time_window) in datasets.items():
 Define a manual filter: specify which neuron indices to fuse for each dataset
 As the autocorrelograms don't look faulty, we decided to fuse neurons that are likely to be the same neuron
 """
-dataset_files = {"ctrl_rat_1": ("ctrl rat 1.pkl", "ctrl_rat_1_filtered.pkl"),"ctrl_rat_2": ("ctrl rat 2.pkl", "ctrl_rat_2_filtered.pkl"),"exp_rat_2":  ("exp rat 2.pkl", "exp_rat_2_filtered.pkl"),"exp_rat_3":  ("exp rat 3.pkl", "exp_rat_3_filtered.pkl")}
+fusion_file_mapping = {"ctrl_rat_1": ("ctrl rat 1.pkl", "ctrl_rat_1_filtered.pkl"),"ctrl_rat_2": ("ctrl rat 2.pkl", "ctrl_rat_2_filtered.pkl"),"exp_rat_2":  ("exp rat 2.pkl", "exp_rat_2_filtered.pkl"),"exp_rat_3":  ("exp rat 3.pkl", "exp_rat_3_filtered.pkl")}
 
 manual_fusion = {
     "ctrl_rat_1": [{0, 2}, {21, 22, 23, 24}], 
@@ -141,7 +141,7 @@ manual_fusion = {
     "exp_rat_3": [{0, 1}, {2, 6, 20}, {9, 10}, {11,12}, {13,14,}] 
 }
 
-apply_manual_fusion(datasets, manual_fusion, dataset_files, raw_dir, processed_dir)
+apply_manual_fusion(datasets, manual_fusion, fusion_file_mapping, raw_dir, processed_dir)
 
 #%%
 """
@@ -164,13 +164,10 @@ Note: We went with both, the correlogram and the ISI check because the correlogr
 # Define a dictionary mapping dataset names to filtered file names.
 filteredCC_files = {"ctrl_rat_1": "ctrl_rat_1_filteredCC.pkl","ctrl_rat_2": "ctrl_rat_2_filteredCC.pkl","exp_rat_2":  "exp_rat_2_filteredCC.pkl","exp_rat_3":  "exp_rat_3_filteredCC.pkl"}
 
-filteredCC_datasets = {}
-
-# Build a dictionary of filtered datasets using the load_dataset helper function
-for name, filename in filteredCC_files.items():
-    file_path = os.path.join(processed_dir, filename)
-    data, neurons, non_stimuli_time = load_dataset(file_path)
-    filteredCC_datasets[name] = (neurons, non_stimuli_time)
+filteredCC_datasets = {
+    name: (datasets[name]["neurons"], datasets[name]["non_stimuli_time"])
+    for name in filteredCC_files.keys()
+}
 
 # Set this flag to enable or disable filtering
 apply_filtering = True  # Change to False if you want raw ISI histograms without filtering
@@ -215,13 +212,10 @@ Overview of this section:
 
 # Define a dictionary mapping dataset names to filtered file names. TODO DELETE BEFORE SUBMISSION AS DUPLICATE
 final_filtered_files = {"ctrl_rat_1": "ctrl_rat_1__ISIfiltered.pkl","ctrl_rat_2": "ctrl_rat_2_ISIfiltered.pkl","exp_rat_2":  "exp_rat_2_ISIfiltered.pkl","exp_rat_3":  "exp_rat_3_ISIfiltered.pkl"}
-final_filtered_datasets = {}
-final_filtered_datasets = {}
-for name, filename in final_filtered_files.items():
-    file_path = os.path.join(processed_dir, filename)
-    data, neurons, non_stimuli_time = load_dataset(file_path)
-    final_filtered_datasets[name] = (neurons, non_stimuli_time)
-
+final_filtered_datasets = {
+    name: (datasets[name]["neurons"], datasets[name]["non_stimuli_time"])
+    for name in final_filtered_files.keys()
+}
 
 # Firing rates
 os.makedirs(save_folder, exist_ok=True)
@@ -229,7 +223,6 @@ analyze_firing_rates(final_filtered_datasets, final_filtered_files, processed_di
 
 # Fano factor and CV
 analyze_variability(final_filtered_datasets, processed_dir, final_filtered_files, save_folder)
-
 
 # %%
 """

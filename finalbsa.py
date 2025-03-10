@@ -220,13 +220,11 @@ but we decided to keep them for now as we did not find this mentioned in similar
 """
 Overview of this section: 
 1. Firing Rates Across Time Windows for Each Recording + Group level firing rates
-3. Fano factor + CV = Variability
-4. PSTH
-5. Correlograms Pre and Post CTA
-6. TIH, Survivor function and Hazard function
+2. Fano factor + CV = Variability
+3. TIH, Survivor function and Hazard function
 """
 
-# Define a dictionary mapping dataset names to filtered file names. TODO DELETE BEFORE SUBMISSION AS DUPLICATE
+# Define a dictionary mapping dataset names to filtered file names
 final_filtered_files = {"ctrl_rat_1": "ctrl_rat_1_ISIfiltered.pkl","ctrl_rat_2": "ctrl_rat_2_ISIfiltered.pkl","exp_rat_2":  "exp_rat_2_ISIfiltered.pkl","exp_rat_3":  "exp_rat_3_ISIfiltered.pkl"}
 final_filtered_datasets = {}
 for name, filename in final_filtered_files.items():
@@ -238,12 +236,20 @@ for name, filename in final_filtered_files.items():
 os.makedirs(save_folder, exist_ok=True)
 analyze_firing_rates(final_filtered_datasets, final_filtered_files, processed_dir, save_folder)
 
-#%% Fano factor and CV
+# Fano factor and CV
 analyze_variability(final_filtered_datasets, processed_dir, final_filtered_files, save_folder)
+
+#%% Survivor function and Hazard function
+
+
 
 # %%
 """
 =================================================================================================================================================================================
 3. Changes in Evoked Responses
 =================================================================================================================================================================================
+"""
+"""
+1. PSTH
+2. Correlograms Pre and Post CTA
 """

@@ -25,7 +25,7 @@ def compute_cv_isi(neurons, time_window=None):
             spikes = np.array(spikes)
         
         if len(spikes) < 2:
-            cv_isi_values.append(np.nan)  # Not enough spikes to compute ISIs
+            cv_isi_values.append(np.nan)  # Not enough spikes to compute ISIs => with one value, std is 0 so not meaningful data
         else:
             isis = np.diff(spikes)
             mean_isi = np.mean(isis)

@@ -7,7 +7,10 @@ def apply_manual_fusion(datasets, manual_fusion, fusion_file_mapping, raw_dir, p
     """
     Applies manual neuron fusion based on predefined groupings.
     """
-    for dataset_name, (neurons_data, time_window) in datasets.items():
+    for dataset_name, dataset in datasets.items():
+        neurons_data = dataset["neurons"]
+        time_window = dataset["non_stimuli_time"]
+        
         print(f"\nProcessing dataset: {dataset_name}")
         total_neurons = len(neurons_data)
         

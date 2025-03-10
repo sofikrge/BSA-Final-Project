@@ -16,8 +16,9 @@ from .isi_tih import isi_tih
 from .analyze_firing_rates import analyze_firing_rates
 from .cv_fano import analyze_variability
 from .apply_manual_fusion import apply_manual_fusion
+from .isi_tih import save_filtered_isi_datasets
 
-__all__ = ["analyze_variability","analyze_firing_rates","isi_tih","plot_isi_metrics",
+__all__ = ["plot_isi_metrics_single_neuron","apply_manual_fusion","save_filtered_isi_datasets","analyze_variability","analyze_firing_rates","isi_tih","plot_isi_metrics",
            "plot_stacked_raster_and_psth","plot_group_figures","merge_datasets",
            "load_dataset","compute_fano_factor","compute_cv_isi" ,"correlogram", 
            "plot_correlogram_matrix", "compute_firing_rates", "compute_firing_rate_std", 

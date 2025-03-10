@@ -73,8 +73,10 @@ def isi_tih(spike_times, binsize=0.0004, min_interval=0.0004, neuron_id=None, bi
     plt.tight_layout()
     
     # Build the output directory using the provided save_folder.
-    output_dir = os.path.join(save_folder, dataset_name)
+    # Ensure `save_folder` is used correctly
+    output_dir = os.path.join(save_folder, "TIH", dataset_name)  # Add "TIH" subfolder if needed
     os.makedirs(output_dir, exist_ok=True)
+
     output_filename = f"{neuron_id}_filtered_comparison.png" if neuron_id is not None else "unknown_filtered_comparison.png"
     output_path = os.path.join(output_dir, output_filename)
     
@@ -92,7 +94,8 @@ def save_filtered_isi_datasets(datasets, processed_dir, raw_dir, apply_filter=Tr
         print("ISI filtering is disabled. No datasets will be saved.")
         return
 
-    for dataset_name, (neurons_data, time_window) in datasets.items():
+    for dataset_name, dataset_tuple in datasets.items():
+        neurons_data, time_window = dataset_tuple 
         print(f"\nProcessing ISI filtering for dataset: {dataset_name}")
         total_neurons = len(neurons_data)
         
@@ -105,7 +108,18 @@ def save_filtered_isi_datasets(datasets, processed_dir, raw_dir, apply_filter=Tr
             filtered_neurons_data.append(new_neuron)
         
         # Reload original data to preserve metadata
-        original_file = os.path.join(raw_dir, dataset_name + ".pkl")
+        # Ensure dataset_name matches the actual file names
+        raw_filename_mapping = {
+            "ctrl_rat_1": "ctrl rat 1.pkl",
+            "ctrl_rat_2": "ctrl rat 2.pkl",
+            "exp_rat_2": "exp rat 2.pkl",
+            "exp_rat_3": "exp rat 3.pkl"
+        }
+
+        # Use the correct filename based on mapping
+        original_file = os.path.join(raw_dir, raw_filename_mapping[dataset_name])
+
+        
         data, _, _ = load_dataset(original_file)
         data["neurons"] = filtered_neurons_data
         
@@ -116,4 +130,3 @@ def save_filtered_isi_datasets(datasets, processed_dir, raw_dir, apply_filter=Tr
             pickle.dump(data, f)
         
         print(f"Saved ISI-filtered data for {dataset_name} to {output_path}")
-

@@ -76,6 +76,19 @@ def analyze_firing_rates(filtered_datasets, filtered_files, processed_dir, save_
 
         except Exception as e:
             print(f"Error processing {dataset_name}: {e}")
+    # Convert to DataFrame and check its structure
+    summary_df = pd.DataFrame(summary_stats)
+
+    print("Final summary_df structure:")
+    print(summary_df.head())  # Should contain "Group"
+
+    # Check if summary_stats is empty
+    if summary_df.empty:
+        print("Warning: summary_df is empty. No data was processed.")
+
+    # Check if "Group" exists before grouping
+    if "Group" not in summary_df.columns:
+        print("Error: 'Group' column is missing in summary_df")
     
     fig.suptitle("Firing Rates Across Time Windows for Each Recording", fontsize=14)
     fig.tight_layout(rect=[0, 0, 1, 0.96])

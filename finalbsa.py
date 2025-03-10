@@ -19,11 +19,15 @@ from functions.isi_tih import isi_tih
 from functions.analyze_firing_rates import analyze_firing_rates
 from functions.cv_fano import analyze_variability
 from functions.apply_manual_fusion import apply_manual_fusion
+from functions.isi_tih import save_filtered_isi_datasets
 
 # Loading files and folders
-save_folder = os.path.join(os.getcwd(), "reports", "figures") # folder for figures
-base_dir = os.path.dirname(os.path.abspath(__file__)) # Get the directory of the current file
+base_dir = os.path.dirname(os.path.abspath(__file__))  # Base directory of the script
+
+save_folder = os.path.join(base_dir, "reports", "figures")  # Correct path
+os.makedirs(save_folder, exist_ok=True)  # Ensure it exists
 raw_dir = os.path.join(base_dir, 'data', 'raw') # raw data directory
+
 processed_dir = os.path.join(base_dir, 'data', 'processed') # processed data directory (after exclusions)
 os.makedirs(processed_dir, exist_ok=True)
 
@@ -115,10 +119,10 @@ Definition of problematic correlograms:
 - for cross-correlograms: if both center bins are the minima for the correlogram
 """
 
-#%% Loop over each dataset and compute/check the correlogram matrix.
+# Loop over each dataset and compute/check the correlogram matrix.
 for dataset_name, dataset in datasets.items():
     neurons_data = dataset["neurons"]
-    time_window = dataset["non_stimuli_time"]
+    time_window = dataset["non_stimuli_time"] # because we we want to see a clearer relative refrac period as well
     print(f"\nProcessing correlogram for dataset: {dataset_name}. Please be patient, this will take a while.")
     
     # Plot and store correlogram data for this dataset
@@ -180,7 +184,25 @@ for dataset_name, (neurons_data, non_stimuli_time) in filteredCC_datasets.items(
     for idx, neuron in enumerate(neurons_data):
         spike_times = neuron[2]  # Extract spike times
         
-        isi_tih(spike_times,binsize=0.0004,min_interval=0.0004,neuron_id=idx,bins=50,dataset_name=dataset_name,save_folder="reports/figures/TIH",time_window=non_stimuli_time,apply_filter=apply_filtering)
+        isi_tih(
+            spike_times,
+            binsize=0.0004,
+            min_interval=0.0004,
+            neuron_id=idx,
+            bins=50,
+            dataset_name=dataset_name,
+            save_folder=os.path.join(save_folder, "TIH"),
+            time_window=non_stimuli_time,
+            apply_filter=apply_filtering
+        )
+
+# Call the function to filter and save ISI-filtered datasets
+save_filtered_isi_datasets(
+    {name: (neurons, non_stimuli_time) for name, (neurons, non_stimuli_time) in filteredCC_datasets.items()},
+    processed_dir,
+    raw_dir,
+    apply_filter=apply_filtering
+)
 
 """
 This check showed us that based on our criterion: 
@@ -211,11 +233,12 @@ Overview of this section:
 """
 
 # Define a dictionary mapping dataset names to filtered file names. TODO DELETE BEFORE SUBMISSION AS DUPLICATE
-final_filtered_files = {"ctrl_rat_1": "ctrl_rat_1__ISIfiltered.pkl","ctrl_rat_2": "ctrl_rat_2_ISIfiltered.pkl","exp_rat_2":  "exp_rat_2_ISIfiltered.pkl","exp_rat_3":  "exp_rat_3_ISIfiltered.pkl"}
-final_filtered_datasets = {
-    name: (datasets[name]["neurons"], datasets[name]["non_stimuli_time"])
-    for name in final_filtered_files.keys()
-}
+final_filtered_files = {"ctrl_rat_1": "ctrl_rat_1_ISIfiltered.pkl","ctrl_rat_2": "ctrl_rat_2_ISIfiltered.pkl","exp_rat_2":  "exp_rat_2_ISIfiltered.pkl","exp_rat_3":  "exp_rat_3_ISIfiltered.pkl"}
+final_filtered_datasets = {}
+for name, filename in final_filtered_files.items():
+    file_path = os.path.join(processed_dir, filename)
+    data, neurons, non_stimuli_time = load_dataset(file_path) 
+    final_filtered_datasets[name] = (neurons, non_stimuli_time)
 
 # Firing rates
 os.makedirs(save_folder, exist_ok=True)

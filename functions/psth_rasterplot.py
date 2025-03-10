@@ -172,9 +172,10 @@ def psth_raster(group_name, neurons, water_events, sugar_events, cta_time):
                    np.nanmax(psth_sugar_post) if psth_sugar_post.size > 0 else 0)
     global_max = max(pre_max, post_max)
     # Set the y-axis limit uniformly on both PSTH subplots.
-    ax2.set_ylim(0, global_max)
-    ax5.set_ylim(0, global_max)
-    
+    buffer = 0.1 * global_max  # Add 10% extra space above the max
+    ax2.set_ylim(0, global_max + buffer)
+    ax5.set_ylim(0, global_max + buffer)
+
     fig.tight_layout(rect=[0, 0, 1, 0.96])
     save_path = os.path.join(figures_dir, f"{group_name}_stacked.png")
     fig.savefig(save_path, dpi=300, bbox_inches="tight")

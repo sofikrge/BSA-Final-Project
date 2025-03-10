@@ -6,6 +6,7 @@ TODO
 - how did we define the timestamps?
 - when do we want to look at which time window? 
 - compare our calculations with what was done in tirgulim to be on the safe side
+- do we want firing rates over the entire time window or just the mean? 
 
 """
 

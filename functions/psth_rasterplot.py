@@ -2,7 +2,7 @@ import os
 import numpy as np
 import matplotlib.pyplot as plt
 
-def psth_raster(group_name, neurons, water_events, sugar_events, cta_time):
+def psth_raster(group_name, neurons, water_events, sugar_events, cta_time, save_folder="reports/figures/psth"):
     """
     Generates and saves a single figure showing both pre-CTA and post-CTA rasters and PSTH overlays side by side.
     
@@ -213,7 +213,7 @@ def psth_raster(group_name, neurons, water_events, sugar_events, cta_time):
 
     fig.tight_layout(rect=[0, 0, 1, 0.96])
     save_path = os.path.join(figures_dir, f"{group_name}_stacked.png")
-    fig.savefig(save_path, dpi=300, bbox_inches="tight")
+    fig.savefig(os.path.join(save_folder, f"{group_name}_stacked.png"), dpi=150, bbox_inches="tight")
     print(f"Saved figure: {save_path}")
     plt.close(fig)
 

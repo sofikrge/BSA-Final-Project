@@ -2,17 +2,16 @@ import numpy as np
 import matplotlib.pyplot as plt
 import os
 
-def plot_survivor_hazard(neuron, non_stimuli_time, sacc_start, cta_time, dataset_max_time,
-                                          figure_title="Survivor and Hazard Functions for Neuron",
+def plot_survivor(neuron, non_stimuli_time, sacc_start, cta_time, dataset_max_time,
+                                          figure_title="Survivor Function for Neuron",
                                           save_folder=None, subfolder=None, neuron_label="neuron1"):
     """
-    Compute and plot the Survivor and Hazard functions for a single neuron across three time windows:
+    Compute and plot the Survivor function for a single neuron across three time windows:
       - Non-Stimuli: use non_stimuli_time
       - Pre-CTA: (sacc_start, cta_time)
       - Post-CTA: (cta_time + 3*3600, dataset_max_time)
     
-    For each time window, the survivor function S(t)=P(ISI>t) and the hazard function
-    h(t) = - (dS/dt) / S(t) are computed.
+    The survivor function S(t)=P(ISI>t) is computed for each window.
     
     Parameters:
     -----------
@@ -31,7 +30,7 @@ def plot_survivor_hazard(neuron, non_stimuli_time, sacc_start, cta_time, dataset
     save_folder : str or None
         Base folder where the figure should be saved (e.g., "reports/figures").
     subfolder : str or None
-        Subfolder name under "Survivor_Hazard" in which to save the figure.
+        Subfolder name under "Survivor_Function" in which to save the figure.
     neuron_label : str
         The label for this neuron (e.g., "neuron1"); also used as the file name.
         
@@ -40,16 +39,15 @@ def plot_survivor_hazard(neuron, non_stimuli_time, sacc_start, cta_time, dataset
     dict
         A dictionary with computed metrics for each time window.
         Each key (window name) maps to a dictionary containing:
-            "isis", "sorted_isi", "survivor_prob", and "hazard_rate".
+            "isis", "sorted_isi", "survivor_prob".
     """
     metrics = {}
     window_names = ["Non-Stimuli", "Pre-CTA", "Post-CTA"]
     n_windows = len(window_names)
-    limit_x=10 # only consider first 10 s for plotting
-    hazard_max_values = []  # To later set uniform y-axis for hazard plots
+    limit_x = 10  # Only consider the first 10 s for plotting
     
-    # Create a figure with 2 rows (survivor on top, hazard below) and one column per time window.
-    fig, axs = plt.subplots(2, n_windows, figsize=(6 * n_windows, 10))
+    # Create a figure with 1 row (only survivor function) and one column per time window.
+    fig, axs = plt.subplots(1, n_windows, figsize=(6 * n_windows, 5))
     fig.suptitle(figure_title)
     
     # Loop over each time window.
@@ -89,72 +87,43 @@ def plot_survivor_hazard(neuron, non_stimuli_time, sacc_start, cta_time, dataset
         survivor_prob = 1 - cumulative_prob
         survivor_prob = np.maximum(survivor_prob, 1e-6)
         
-        # Compute derivative of the Survivor Function.
-        derivative_survivor = np.gradient(survivor_prob, sorted_isi)
-        derivative_survivor = np.nan_to_num(derivative_survivor, nan=0, posinf=0, neginf=0)
-        
-        # Compute Hazard Function: h(t) = - (dS/dt) / S(t).
-        hazard_rate = -derivative_survivor / survivor_prob
-        
-        # Record the maximum hazard (within 0-10 sec) for uniform scaling.
-        hazard_max_values.append(np.nanmax(hazard_rate))
-        
-        
         # Store computed metrics.
         metrics[window_name] = {
             "isis": isis,
             "sorted_isi": sorted_isi,
-            "survivor_prob": survivor_prob,
-            "hazard_rate": hazard_rate
+            "survivor_prob": survivor_prob
         }
         
-        # Plot Survivor Function (top row).
+        # Plot Survivor Function
         if n_windows > 1:
-            ax_survivor = axs[0, i]
+            ax_survivor = axs[i]
         else:
-            ax_survivor = axs[0]
+            ax_survivor = axs
+        
         ax_survivor.plot(sorted_isi, survivor_prob, color='blue')
         ax_survivor.set_title(f"Survivor: {window_name}")
         ax_survivor.set_xlabel("ISI (s)")
         ax_survivor.set_xlim(0, limit_x)
         ax_survivor.set_ylabel("Survivor Probability")
         ax_survivor.set_ylim(0, 1)
-        
-        # Plot Hazard Function (bottom row).
-        if n_windows > 1:
-            ax_hazard = axs[1, i]
-        else:
-            ax_hazard = axs[1]
-        ax_hazard.plot(sorted_isi, hazard_rate, color='red')
-        ax_hazard.set_title(f"Hazard: {window_name}")
-        ax_hazard.set_xlabel("ISI (s)")
-        ax_hazard.set_ylabel("Hazard Rate")
-        ax_hazard.set_xlim(0, limit_x)
-    
-    # Set uniform y-axis for Hazard functions based on the maximum hazard across windows.
-    if hazard_max_values:
-        global_hazard_max = max(hazard_max_values)
-    else:
-        global_hazard_max = 1
-    for i in range(n_windows):
-        if n_windows > 1:
-            axs[1, i].set_ylim(0, global_hazard_max)
-        else:
-            axs[1].set_ylim(0, global_hazard_max)
     
     fig.tight_layout(rect=[0, 0, 1, 0.96])
     
     # Save the figure in the specified folder structure.
     if save_folder:
-        full_folder = os.path.join(save_folder, "Survivor_Hazard")
+        full_folder = os.path.join(save_folder, "Survivor_Function")
+
         if subfolder:
             full_folder = os.path.join(full_folder, subfolder)
-        os.makedirs(full_folder, exist_ok=True)
+
+        os.makedirs(full_folder, exist_ok=True)  # Ensure the directory exists
         save_path = os.path.join(full_folder, f"{neuron_label}.png")
-        fig.savefig(save_path, dpi=300, bbox_inches="tight")
-        print(f"Survivor and hazard functions plot saved: {save_path}")
+
+        fig.savefig(save_path, dpi=150, bbox_inches="tight")
+        # print(f"Survivor function plot saved: {save_path}")
         plt.close(fig)
     else:
         plt.show()
+
     
     return metrics

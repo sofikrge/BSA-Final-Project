@@ -27,7 +27,7 @@ def filter_invalid_isis(spike_times, min_isi=0.0004, apply_filter=True):
     # Print number of removed spikes
     removed_spikes = len(spike_times) - len(filtered_spike_times)
     total_spikes = len(spike_times)
-    print(f"Removed {removed_spikes} out of {total_spikes} spikes due to ISI ≤ {min_isi} seconds.")
+    # print(f"Removed {removed_spikes} out of {total_spikes} spikes due to ISI ≤ {min_isi} seconds.")
     
     return filtered_spike_times
 

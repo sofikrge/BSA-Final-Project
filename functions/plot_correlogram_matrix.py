@@ -77,7 +77,7 @@ def plot_correlogram_matrix(neurons_data, binsize, dataset_name, limit=0.02, tim
     # Compute the global threshold: mean of all center bin values of the autocorrelograms plus their standard deviation.
     all_center_vals = np.array(all_center_vals)
     global_threshold = all_center_vals.mean() + 2 * all_center_vals.std()
-    print(f"Computed global_threshold = {global_threshold}")
+    # print(f"Computed global_threshold = {global_threshold}")
     
     # Create the subplot grid.
     fig, axes = plt.subplots(num_neurons, num_neurons, figsize=(num_neurons * 3, num_neurons * 3))
@@ -183,7 +183,7 @@ def plot_correlogram_matrix(neurons_data, binsize, dataset_name, limit=0.02, tim
         save_folder = os.path.join(os.getcwd(), "reports", "figures")
     os.makedirs(save_folder, exist_ok=True)
     save_path = os.path.join(save_folder, f"{dataset_name}_correlogram.png")
-    plt.savefig(save_path, dpi=300, bbox_inches='tight')
+    plt.savefig(save_path, dpi=150, bbox_inches='tight')
     plt.close()  # Free memory
     
     if store_data:

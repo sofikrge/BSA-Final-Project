@@ -11,7 +11,7 @@ def apply_manual_fusion(datasets, manual_fusion, fusion_file_mapping, raw_dir, p
         neurons_data = dataset["neurons"]
         time_window = dataset["non_stimuli_time"]
         
-        print(f"\nProcessing dataset: {dataset_name}")
+        # print(f"\nProcessing dataset: {dataset_name}")
         total_neurons = len(neurons_data)
         
         # Get the fusion groups for this dataset.
@@ -38,14 +38,14 @@ def apply_manual_fusion(datasets, manual_fusion, fusion_file_mapping, raw_dir, p
             fused_neuron = neurons_data[min(group)].copy()
             fused_neuron[2] = group_spike_times  # Replace spike times with the fused spike times.
             fused_neurons.append(fused_neuron)
-            print(f"Fused neurons {sorted(group)} into one.")
+            # print(f"Fused neurons {sorted(group)} into one.")
         
         # The final neuron list is the neurons not fused plus the newly fused neurons.
         filtered_neurons_data = neurons_not_fused + fused_neurons
         new_count = len(filtered_neurons_data)
         filtered_out_count = total_neurons - new_count
         print(f"Original neuron count: {total_neurons}, New neuron count: {new_count}.")
-        print(f"{filtered_out_count} neurons were fused (removed and replaced with {len(fused_neurons)} fused neurons).")
+        # print(f"{filtered_out_count} neurons were fused (removed and replaced with {len(fused_neurons)} fused neurons).")
         
         # Reload the original full data to preserve metadata.
         original_file = os.path.join(raw_dir, fusion_file_mapping[dataset_name][0])

@@ -189,7 +189,7 @@ def analyze_firing_rates(filtered_datasets, filtered_files, processed_dir, save_
     plt.tight_layout(rect=[0, 0, 1, 0.96])
     plt.ioff()
     composite_filename = os.path.join(firingrates_dir, "firing_rates_dataset_and_group_level.png")
-    plt.savefig(composite_filename, dpi=300, bbox_inches="tight")
+    plt.savefig(composite_filename, dpi=150, bbox_inches="tight")
     plt.close()
     
     # Optional: Print the summary stats for debugging

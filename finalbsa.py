@@ -1,16 +1,74 @@
+
 """
 =================================================================================================================================================================================
 BSA Final Assignment - Denise Jaeschke & Sofia Karageorgiou
 =================================================================================================================================================================================
+"""
+"""
 TODO
 - how did we define the timestamps?
 - when do we want to look at which time window? 
 - compare our calculations with what was done in tirgulim to be on the safe side
-- do we want firing rates over the entire time window or just the mean? 
+- do we want firing rates over the entire time window or just the mean?
+- psth & survivor hazard are saving to the wrong folder
 
+To compare at the end:
+- subtract baseline non-stimulus firing rate from evoked responses to see how much they change -> 2 plots: control water and sugar + experimental water and sugar
+- statistical analysis to see if the changes are significant
+- can one correlate metrics over time windows? e.g., correlation of neuron 1 precta with neuron 1 postcta: high correlation would mean firing remains similar
+    while low correlation would mean the response changed -> maybe create heatmaps with different colors for different degrees of correlation?
+Chats notes on that:
+1. Subtract Baseline from Evoked Response: 
+   - **Idea:** Compute the difference between the baseline (non-stimulus) firing rate and the evoked firing rate (during taste presentations).  
+   - **Visualization:** Create separate plots for control and experimental conditions for water and sugar. This directly shows how much each neuron's firing rate changes from baseline.  
+   - **Statistical Analysis:** You can run paired statistical tests (e.g., paired t-test or Wilcoxon signed-rank test) to assess if the change is significant within groups, and then compare between control and experimental groups.
+2. Correlation of Metrics Over Time Windows:
+   - **Idea:** Compute metrics (e.g., CV, Fano Factor, or even raw firing rate) per neuron for different time windows (e.g., pre-CTA vs. post-CTA). Then, correlate these metrics for each neuron.  
+   - **Interpretation:**  
+     - A high correlation indicates that the relative firing properties remain similar across conditions (e.g., a neuron that is bursty pre-CTA remains bursty post-CTA).  
+     - A low correlation suggests that the firing properties have shifted—perhaps due to the effects of CTA.  
+   - **Visualization:** Creating heatmaps of the correlation coefficients (using, say, different colors to indicate degrees of similarity/difference) is a great idea. This can provide a quick visual reference for which neurons change most dramatically.
+3. Implementation Considerations:
+   - When subtracting baseline from evoked responses, ensure you're aligning the time windows correctly.  
+   - For the correlation analysis, you might want to compute the metric per neuron in each time window and then use a scatter plot (or a correlation matrix/heatmap) to compare the values.
+   - It's also useful to check the overall distribution of these metrics to see if any neurons are outliers and how that might affect your statistical tests.
+
+Old notes
+Descriptive metrics:
+- Mean spiking rate
+- Variance
+- Coefficient of Variation (CV)
+    1 for Poisson, because both mean and variance = lambda (rate parameter of process so average number of events in a given time interval)
+    Shows how random vs regular activity
+    When >1 then neurons are bursty, variability higher than expected
+    When <1 usually dealing with regular neurons 
+- Fano Factor
+    F >1 indicates overdispersion so larger variance than mean, could be clustering or correlation among events
+    F<1 underdispersion, more regular or uniform distribution of events than what a Poisson assumes
+    If Fano factor approaches Cv^2 over long time intervals, it means that the next spike depends on the previous one
+- ISI
+    What is the chance for a spike t seconds after the previous
+- TIH
+    Histogram of time difference between adjacent spikes (so of ISI)
+- Survivor function
+    probability neuron stays quiet for time t after previous spike, initial value is 1 and decreases to 0 as t approaches infinity 
+- Hazard function
+    independent probability to fire at any single point
+    mainly used to detect burst activity and refractory period
+    focuses on risk of an event happening regardless of history
+    basically rate at which survivor function decays
+    might get very noisy at the end because there are only few neurons that spike with such long ISI
+
+Gameplan for exclusion
+- only look at unstimulated phase
+- 0.5ms bin size as that is the absolute refractory period -> one spike is happening so look at 2 bins
+- no immediate peak next to absolute refractory period
+- 2ms relative refractory period -> look at 4 bins, there should be close to none as we are looking at the unstimulated 
+phase and a very strong stimulus would be needed for a new spike
+- chose a conservative criterion because our biggest enemy too high is data loss
 """
 
-#%% Imports
+#%% Imports, loading data, and setting up directories
 import pickle
 import re
 import numpy as np
@@ -28,18 +86,18 @@ from functions.analyze_firing_rates import analyze_firing_rates
 from functions.cv_fano import analyze_variability
 from functions.apply_manual_fusion import apply_manual_fusion
 from functions.isi_tih import save_filtered_isi_datasets
-from functions.plot_survivor_hazard import plot_survivor_hazard
+from functions.plot_survivor import plot_survivor
 from functions.psth_rasterplot import psth_raster
-from functions.group_psth_plots import group_psth_plots
 
 # Loading files and folders
-base_dir = os.path.dirname(os.path.abspath(__file__))  # Base directory of the script
+base_dir = os.path.abspath(os.path.dirname(__file__))  # folder of this script
 
-save_folder = os.path.join(base_dir, "reports", "figures")  # Correct path
-os.makedirs(save_folder, exist_ok=True)  # Ensure it exists
-raw_dir = os.path.join(base_dir, 'data', 'raw') # raw data directory
+save_folder = os.path.join(base_dir, "reports", "figures")
+os.makedirs(save_folder, exist_ok=True)  # Ensure directory exists
 
-processed_dir = os.path.join(base_dir, 'data', 'processed') # processed data directory (after exclusions)
+raw_dir = os.path.join(base_dir, "data", "raw")
+
+processed_dir = os.path.join(base_dir, 'data', 'processed')
 os.makedirs(processed_dir, exist_ok=True)
 
 # Define dataset file paths
@@ -47,7 +105,7 @@ dataset_paths = {
     "ctrl_rat_1": os.path.join(raw_dir, "ctrl rat 1.pkl"),
     "ctrl_rat_2": os.path.join(raw_dir, "ctrl rat 2.pkl"),
     "exp_rat_2": os.path.join(raw_dir, "exp rat 2.pkl"),
-    "exp_rat_3": os.path.join(raw_dir, "exp rat 3.pkl")
+    "exp_rat_3": os.path.join(raw_dir, "exp rat 3.pkl"),
 }
 
 # Load datasets once at the beginning
@@ -251,7 +309,7 @@ print("Firing rates have been plotted and saved.")
 analyze_variability(final_filtered_datasets, processed_dir, final_filtered_files, save_folder)
 print("Fano factor and CV have been plotted and saved.")
 
-#%% Survivor function and Hazard function
+#%% Survivor function
 for dataset_name, (neurons, non_stimuli_time) in final_filtered_datasets.items():
     # Load the associated data to extract sacc_start and cta_time.
     data = load_dataset(os.path.join(processed_dir, final_filtered_files[dataset_name]))[0]
@@ -266,18 +324,20 @@ for dataset_name, (neurons, non_stimuli_time) in final_filtered_datasets.items()
     
     for idx, neuron in enumerate(neurons):
         neuron_label = f"{dataset_name}_neuron{idx+1}"
-        plot_survivor_hazard(
+        
+        plot_survivor(  # Use the new function (without hazard)
             neuron,
             non_stimuli_time=non_stimuli_time,
-            sacc_start=sacc_start,
+            sacc_sstart=sacc_start,
             cta_time=cta_time,
             dataset_max_time=dataset_max_time,
-            figure_title=f"Survivor & Hazard Functions for {neuron_label}",
-            save_folder="reports/figures",  # Base folder.
-            subfolder=dataset_subfolder,    # One folder per dataset.
+            figure_title=f"Survivor Function for {neuron_label}",
+            save_folder=os.path.join(base_dir,"reports", "figures"),
+            subfolder=dataset_subfolder,  # One folder per dataset
             neuron_label=neuron_label
         )
-print("Survivor and Hazard functions have been plotted and saved.")
+
+print("Survivor functions have been plotted and saved.")
 
 # %%
 """
@@ -292,8 +352,8 @@ print("Survivor and Hazard functions have been plotted and saved.")
 
 # 1. PSTH
 
-# Set the PSTH figures folder
-psthfigures_dir = os.path.join("reports", "figures", "psth")
+# Ensure the PSTH figures folder is inside the correct project directory
+psthfigures_dir = os.path.join(base_dir, "reports", "figures", "psth")
 os.makedirs(psthfigures_dir, exist_ok=True)
 
 # Create a dictionary to store precomputed PSTH results for all datasets
@@ -309,16 +369,22 @@ for dataset_name, (neurons, non_stimuli_time) in tqdm(final_filtered_datasets.it
     sugar_events = np.array(data.get("event_times", {}).get("sugar", []))
     
     # Debugging info
-    print(f"{dataset_name}: water_events: {len(water_events)}, sugar_events: {len(sugar_events)}")
+    # print(f"{dataset_name}: water_events: {len(water_events)}, sugar_events: {len(sugar_events)}")
     cta_time = data.get("CTA injection time", None)
-    print(f"{dataset_name}: CTA time: {cta_time}")
+    # print(f"{dataset_name}: CTA time: {cta_time}")
     
     # Call psth_raster and store results
-    psth_data = psth_raster(dataset_name, neurons, water_events, sugar_events, cta_time)
+    psth_data = psth_raster(
+        dataset_name,
+        neurons,
+        water_events,
+        sugar_events,
+        cta_time,
+        save_folder=psthfigures_dir  # Ensures PSTH figures save to the correct folder
+    )
+    
     psth_data_map[dataset_name] = psth_data  # Store precomputed PSTH data
 
-# Now, use the precomputed PSTH data to generate the grouped PSTH plots
-group_psth_plots(final_filtered_datasets, final_filtered_files, processed_dir, psth_data_map)
-
-print("PSTH computation and grouping complete!")
+print("PSTH plots have been saved.")
+print("Analysis completed! Thanks for your patience :)")
 # %%

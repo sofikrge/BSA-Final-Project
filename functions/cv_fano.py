@@ -191,11 +191,8 @@ def analyze_variability(filtered_datasets, processed_dir, filtered_files, save_f
     fig_fano.suptitle("Fano Factor of Spike Counts Across Time Windows and Recordings (File & Group Level)", fontsize=16)
     fig_fano.tight_layout(rect=[0, 0, 1, 0.96])
     fano_filename = os.path.join(variability_dir, "fano_composite.png")
-    fig_fano.savefig(fano_filename, dpi=300, bbox_inches="tight")  # Use fig_fano.savefig(...)
+    fig_fano.savefig(fano_filename, dpi=150, bbox_inches="tight")  # Use fig_fano.savefig(...)
     plt.close(fig_fano)
-
-    
-    print("Variability analysis composite plots saved in:", variability_dir)
 
 # Explicitly export it
 __all__ = ["analyze_variability"]

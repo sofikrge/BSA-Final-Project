@@ -316,5 +316,5 @@ for dataset_name, (neurons, non_stimuli_time) in tqdm(final_filtered_datasets.it
     # Call psth_raster for this dataset.
     psth_raster(group_name, neurons, water_events, sugar_events, cta_time)
 
-group_psth_plots(final_filtered_datasets, final_filtered_files, processed_dir)
+# group_psth_plots(final_filtered_datasets, final_filtered_files, processed_dir)
 # %%

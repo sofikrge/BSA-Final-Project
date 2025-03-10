@@ -106,12 +106,12 @@ def plot_correlogram_matrix(neurons_data, binsize, dataset_name, limit=0.02, tim
                         reasons.append("center bin count(s) exceed global_threshold")
                     if condition_B:
                         reasons.append("global peak is immediately outside center bins")
-                    print(f"Neuron {i+1} autocorrelogram is problematic because: {', '.join(reasons)}")
+                    # print(f"Neuron {i+1} autocorrelogram is problematic because: {', '.join(reasons)}")
                     problematic_neuron_indices.add(i)
             else:       # cross-correlogram: problematic if both center bins are below threshold.
                 is_problematic = (counts[center_left] == counts.min() or counts[center_right] == counts.min())
                 if is_problematic:
-                    print(f"Neuron {i+1} vs Neuron {j+1} cross-correlogram is problematic because a center bin is the minimum.")
+                    # print(f"Neuron {i+1} vs Neuron {j+1} cross-correlogram is problematic because a center bin is the minimum.")
                     problematic_neuron_indices.add(i)
                     problematic_neuron_indices.add(j)
                     

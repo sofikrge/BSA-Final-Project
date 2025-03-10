@@ -4,6 +4,8 @@ BSA Final Assignment - Denise Jaeschke & Sofia Karageorgiou
 =================================================================================================================================================================================
 TODO
 - how did we define the timestamps?
+- when do we want to look at which time window? 
+- compare our calculations with what was done in tirgulim to be on the safe side
 
 """
 
@@ -23,6 +25,9 @@ from functions.analyze_firing_rates import analyze_firing_rates
 from functions.cv_fano import analyze_variability
 from functions.apply_manual_fusion import apply_manual_fusion
 from functions.isi_tih import save_filtered_isi_datasets
+from functions.plot_survivor_hazard import plot_survivor_hazard
+from functions.psth_rasterplot import psth_raster
+from functions.group_psth_plots import group_psth_plots
 
 # Loading files and folders
 base_dir = os.path.dirname(os.path.abspath(__file__))  # Base directory of the script
@@ -232,7 +237,7 @@ for name, filename in final_filtered_files.items():
     data, neurons, non_stimuli_time = load_dataset(file_path) 
     final_filtered_datasets[name] = (neurons, non_stimuli_time)
 
-# Firing rates
+#%% Firing rates
 os.makedirs(save_folder, exist_ok=True)
 analyze_firing_rates(final_filtered_datasets, final_filtered_files, processed_dir, save_folder)
 
@@ -240,8 +245,31 @@ analyze_firing_rates(final_filtered_datasets, final_filtered_files, processed_di
 analyze_variability(final_filtered_datasets, processed_dir, final_filtered_files, save_folder)
 
 #%% Survivor function and Hazard function
-
-
+for dataset_name, (neurons, non_stimuli_time) in final_filtered_datasets.items():
+    # Load the associated data to extract sacc_start and cta_time.
+    data = load_dataset(os.path.join(processed_dir, final_filtered_files[dataset_name]))[0]
+    sacc_start = data.get("sacc drinking session start time", 0)
+    cta_time = data.get("CTA injection time", 0)
+    
+    # Compute the maximum spike time across all neurons for the Post-CTA window.
+    dataset_max_time = max((np.max(neuron[2]) for neuron in neurons if len(neuron[2]) > 0), default=0)
+    
+    # Use the dataset name as the subfolder.
+    dataset_subfolder = dataset_name
+    
+    for idx, neuron in enumerate(neurons):
+        neuron_label = f"{dataset_name}_neuron{idx+1}"
+        plot_survivor_hazard(
+            neuron,
+            non_stimuli_time=non_stimuli_time,
+            sacc_start=sacc_start,
+            cta_time=cta_time,
+            dataset_max_time=dataset_max_time,
+            figure_title=f"Survivor & Hazard Functions for {neuron_label}",
+            save_folder="reports/figures",  # Base folder.
+            subfolder=dataset_subfolder,    # One folder per dataset.
+            neuron_label=neuron_label
+        )
 
 # %%
 """
@@ -253,3 +281,37 @@ analyze_variability(final_filtered_datasets, processed_dir, final_filtered_files
 1. PSTH
 2. Correlograms Pre and Post CTA
 """
+
+# PSTH for each dataset
+# Set the PSTH figures folder to reports/figures/psth.
+psthfigures_dir = os.path.join("reports", "figures", "psth")
+os.makedirs(psthfigures_dir, exist_ok=True)
+
+import functions.psth_rasterplot as prp  # to override its figures_dir
+
+# Set the desired PSTH folder to "reports/figures/psth" and ensure it exists.
+desired_psth_folder = os.path.join("reports", "figures", "psth")
+os.makedirs(desired_psth_folder, exist_ok=True)
+
+# Loop over all datasets/files.
+for dataset_name, (neurons, non_stimuli_time) in final_filtered_datasets.items():
+    # Load the associated data.
+    data = load_dataset(os.path.join(processed_dir, final_filtered_files[dataset_name]))[0]
+    
+    # Extract water and sugar events (adjust the key names if needed).
+    water_events = np.array(data.get("event_times", {}).get("water", []))
+    sugar_events = np.array(data.get("event_times", {}).get("sugar", []))
+    
+    # Debug: Print out event counts and CTA time.
+    print(f"{dataset_name}: water_events: {len(water_events)}, sugar_events: {len(sugar_events)}")
+    cta_time = data.get("CTA injection time", None)
+    print(f"{dataset_name}: CTA time: {cta_time}")
+    
+    # Use the dataset name as the group name.
+    group_name = dataset_name
+    
+    # Call psth_raster for this dataset.
+    psth_raster(group_name, neurons, water_events, sugar_events, cta_time)
+
+group_psth_plots(final_filtered_datasets, final_filtered_files, processed_dir)
+# %%

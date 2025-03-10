@@ -17,20 +17,30 @@ def compute_firing_rates(spike_times_list, time_window):
 
 def analyze_firing_rates(filtered_datasets, filtered_files, processed_dir, save_folder):
     """
-    Processes and analyzes firing rates across different datasets, generating figures and summary statistics.
+    Processes and analyzes firing rates across different datasets. 
+    This function creates a composite figure with two panels:
+      - The top panel shows three subplots (one for each time window) of the individual dataset firing rates.
+      - The bottom panel shows three subplots of the group-level mean firing rates per window.
     """
     firingrates_dir = os.path.join(save_folder, "firingrates")
     os.makedirs(firingrates_dir, exist_ok=True)
     
-    fig, axes = plt.subplots(2, 2, figsize=(12, 10), sharex=True, sharey=True)
-    axes = axes.flatten()
+    # Lists to collect per-recording data
+    recording_names = []
+    non_stimuli_means = []
+    pre_CTA_means = []
+    post_CTA_means = []
+    non_stimuli_stds = []
+    pre_CTA_stds = []
+    post_CTA_stds = []
+    group_list = []
     
-    summary_stats = []  # Collect summary stats
+    summary_stats = []  # To store summary stats for each recording
 
-    # Loop through each filtered dataset and process it
-    for ax, (dataset_name, (neurons_data, non_stimuli_time)) in zip(axes, filtered_datasets.items()):
+    # Process each dataset
+    for dataset_name, (neurons_data, non_stimuli_time) in filtered_datasets.items():
         try:
-            # Extract spike times
+            # Extract spike times and load additional dataset info
             spike_times_list = extract_spike_times(neurons_data)
             data = load_dataset(os.path.join(processed_dir, filtered_files[dataset_name]))[0]
             sacc_start = data.get("sacc drinking session start time", 0)
@@ -41,85 +51,149 @@ def analyze_firing_rates(filtered_datasets, filtered_files, processed_dir, save_
             pre_CTA_time = (sacc_start, cta_time)
             post_CTA_time = (cta_time + 3 * 3600, max_time)
             
-            # Compute firing rates
-            non_stimuli_rates = compute_firing_rates(spike_times_list, non_stimuli_time)
-            pre_CTA_rates = compute_firing_rates(spike_times_list, pre_CTA_time)
-            post_CTA_rates = compute_firing_rates(spike_times_list, post_CTA_time)
+            # Compute firing rates for each window
+            rates_non = compute_firing_rates(spike_times_list, non_stimuli_time)
+            rates_pre = compute_firing_rates(spike_times_list, pre_CTA_time)
+            rates_post = compute_firing_rates(spike_times_list, post_CTA_time)
             
-            # Compute standard deviations
-            non_stimuli_std = np.std(non_stimuli_rates)
-            pre_CTA_std = np.std(pre_CTA_rates)
-            post_CTA_std = np.std(post_CTA_rates)
+            # Calculate means and standard deviations
+            mean_non = np.mean(rates_non)
+            mean_pre = np.mean(rates_pre)
+            mean_post = np.mean(rates_post)
             
-            # Store summary stats
+            std_non = np.std(rates_non)
+            std_pre = np.std(rates_pre)
+            std_post = np.std(rates_post)
+            
+            # Determine group based on dataset name
             group = "Control" if "ctrl" in dataset_name.lower() else "Experimental"
+            
+            # Append per-recording data
+            recording_names.append(dataset_name)
+            non_stimuli_means.append(mean_non)
+            pre_CTA_means.append(mean_pre)
+            post_CTA_means.append(mean_post)
+            non_stimuli_stds.append(std_non)
+            pre_CTA_stds.append(std_pre)
+            post_CTA_stds.append(std_post)
+            group_list.append(group)
+            
+            # Store summary statistics for this recording
             summary_stats.append({
                 "Recording": dataset_name,
                 "Group": group,
-                "Non-Stimuli Mean": np.mean(non_stimuli_rates),
-                "Pre-CTA Mean": np.mean(pre_CTA_rates),
-                "Post-CTA Mean": np.mean(post_CTA_rates),
-                "Non-Stimuli Std": non_stimuli_std,
-                "Pre-CTA Std": pre_CTA_std,
-                "Post-CTA Std": post_CTA_std
+                "Non-Stimuli Mean": mean_non,
+                "Pre-CTA Mean": mean_pre,
+                "Post-CTA Mean": mean_post,
+                "Non-Stimuli Std": std_non,
+                "Pre-CTA Std": std_pre,
+                "Post-CTA Std": std_post
             })
             
-            # Simple bar plot for each dataset with error bars
-            ax.bar(["Non-Stimuli", "Pre-CTA", "Post-CTA"], 
-                   [np.mean(non_stimuli_rates), np.mean(pre_CTA_rates), np.mean(post_CTA_rates)], 
-                   yerr=[non_stimuli_std, pre_CTA_std, post_CTA_std],
-                   color='skyblue', edgecolor='k', alpha=0.7, capsize=5)
-            ax.set_title(dataset_name)
-            ax.set_ylabel("Mean Firing Rate (Hz)")
-            ax.set_xlabel("Time Window")
-            ax.grid(axis='y', linestyle='--', alpha=0.6)
-
         except Exception as e:
             print(f"Error processing {dataset_name}: {e}")
-    # Convert to DataFrame and check its structure
-    summary_df = pd.DataFrame(summary_stats)
-
-    print("Final summary_df structure:")
-    print(summary_df.head())  # Should contain "Group"
-
-    # Check if summary_stats is empty
-    if summary_df.empty:
-        print("Warning: summary_df is empty. No data was processed.")
-
-    # Check if "Group" exists before grouping
-    if "Group" not in summary_df.columns:
-        print("Error: 'Group' column is missing in summary_df")
     
-    fig.suptitle("Firing Rates Across Time Windows for Each Recording", fontsize=14)
-    fig.tight_layout(rect=[0, 0, 1, 0.96])
-    plt.ioff() 
-    plt.savefig(os.path.join(firingrates_dir, "firing_rates_combined.png"), dpi=300, bbox_inches="tight")
-    plt.close()
-
-    # Compute group-level summary and plot
+    # Convert collected stats to DataFrame for further grouping
     summary_df = pd.DataFrame(summary_stats)
-    print("\nIndividual recording summary:")
-    print(summary_df)
+    
+    # Group-level summary: calculate mean and std for each group (Control vs Experimental)
     group_summary = summary_df.groupby("Group")[["Non-Stimuli Mean", "Pre-CTA Mean", "Post-CTA Mean"]].mean()
     group_std = summary_df.groupby("Group")[["Non-Stimuli Mean", "Pre-CTA Mean", "Post-CTA Mean"]].std()
     group_std.columns = ["Non-Stimuli Std", "Pre-CTA Std", "Post-CTA Std"]
-    print("\nGroup-level summary (Control vs Experimental):")
-    print(group_summary)
 
-    # Plot group-level firing rates with standard deviations
-    fig2, axs = plt.subplots(1, 2, figsize=(12, 5))
-    for ax, (group, row) in zip(axs, group_summary.iterrows()):
-        stds = group_std.loc[group, ["Non-Stimuli Std", "Pre-CTA Std", "Post-CTA Std"]].values
-        ax.bar(["Non-Stimuli", "Pre-CTA", "Post-CTA"], row, 
-               yerr=stds, color='skyblue', edgecolor='k', alpha=0.7, capsize=5)
-        ax.set_title(f"{group} Group")
-        ax.set_ylabel("Mean Firing Rate (Hz)")
-        ax.set_xlabel("Time Window")
-        ax.grid(axis='y', linestyle='--', alpha=0.6)
+    # Create a composite figure with 2 rows and 3 columns
+    fig, axes = plt.subplots(2, 3, figsize=(18, 10))
     
-    plt.suptitle("Group-Level Mean Firing Rates")
+    # -------------------
+    # Top row: Individual recordings for each time window
+    # -------------------
+    # Non-Stimuli window (top left)
+    axes[0, 0].bar(recording_names, non_stimuli_means, yerr=non_stimuli_stds,
+                   color='skyblue', edgecolor='k', alpha=0.7, capsize=5)
+    axes[0, 0].set_title("Non-Stimuli Firing Rates (Individual)")
+    axes[0, 0].set_ylabel("Firing Rate (Hz)")
+    axes[0, 0].tick_params(axis='x', rotation=45)
+    axes[0, 0].grid(axis='y', linestyle='--', alpha=0.6)
+    
+    # Pre-CTA window (top middle)
+    axes[0, 1].bar(recording_names, pre_CTA_means, yerr=pre_CTA_stds,
+                   color='skyblue', edgecolor='k', alpha=0.7, capsize=5)
+    axes[0, 1].set_title("Pre-CTA Firing Rates (Individual)")
+    axes[0, 1].set_ylabel("Firing Rate (Hz)")
+    axes[0, 1].tick_params(axis='x', rotation=45)
+    axes[0, 1].grid(axis='y', linestyle='--', alpha=0.6)
+    
+    # Post-CTA window (top right)
+    axes[0, 2].bar(recording_names, post_CTA_means, yerr=post_CTA_stds,
+                   color='skyblue', edgecolor='k', alpha=0.7, capsize=5)
+    axes[0, 2].set_title("Post-CTA Firing Rates (Individual)")
+    axes[0, 2].set_ylabel("Firing Rate (Hz)")
+    axes[0, 2].tick_params(axis='x', rotation=45)
+    axes[0, 2].grid(axis='y', linestyle='--', alpha=0.6)
+    
+    # -------------------
+    # Bottom row: Group-level summary for each time window
+    # -------------------
+    groups = ["Control", "Experimental"]
+    
+    # Non-Stimuli window group summary (bottom left)
+    non_means = [group_summary.loc[g, "Non-Stimuli Mean"] if g in group_summary.index else 0 for g in groups]
+    non_err = [group_std.loc[g, "Non-Stimuli Std"] if g in group_std.index else 0 for g in groups]
+    axes[1, 0].bar(groups, non_means, yerr=non_err,
+                   color='skyblue', edgecolor='k', alpha=0.7, capsize=5)
+    axes[1, 0].set_title("Non-Stimuli Firing Rates (Group)")
+    axes[1, 0].set_ylabel("Firing Rate (Hz)")
+    axes[1, 0].grid(axis='y', linestyle='--', alpha=0.6)
+    
+    # Pre-CTA window group summary (bottom middle)
+    pre_means = [group_summary.loc[g, "Pre-CTA Mean"] if g in group_summary.index else 0 for g in groups]
+    pre_err = [group_std.loc[g, "Pre-CTA Std"] if g in group_std.index else 0 for g in groups]
+    axes[1, 1].bar(groups, pre_means, yerr=pre_err,
+                   color='skyblue', edgecolor='k', alpha=0.7, capsize=5)
+    axes[1, 1].set_title("Pre-CTA Firing Rates (Group)")
+    axes[1, 1].set_ylabel("Firing Rate (Hz)")
+    axes[1, 1].grid(axis='y', linestyle='--', alpha=0.6)
+    
+    # Post-CTA window group summary (bottom right)
+    post_means = [group_summary.loc[g, "Post-CTA Mean"] if g in group_summary.index else 0 for g in groups]
+    post_err = [group_std.loc[g, "Post-CTA Std"] if g in group_std.index else 0 for g in groups]
+    axes[1, 2].bar(groups, post_means, yerr=post_err,
+                   color='skyblue', edgecolor='k', alpha=0.7, capsize=5)
+    axes[1, 2].set_title("Post-CTA Firing Rates (Group)")
+    axes[1, 2].set_ylabel("Firing Rate (Hz)")
+    axes[1, 2].grid(axis='y', linestyle='--', alpha=0.6)
+    
+    # Compute global maximum for file-level plots
+    global_max_individual = max(
+        max([x + y for x, y in zip(non_stimuli_means, non_stimuli_stds)]),
+        max([x + y for x, y in zip(pre_CTA_means, pre_CTA_stds)]),
+        max([x + y for x, y in zip(post_CTA_means, post_CTA_stds)])
+    )
+
+    # Compute global maximum for group-level plots
+    global_max_group = max(
+        max([x + y for x, y in zip(non_means, non_err)]),
+        max([x + y for x, y in zip(pre_means, pre_err)]),
+        max([x + y for x, y in zip(post_means, post_err)])
+    )
+
+    # Determine the overall maximum y-axis value
+    global_ymax = max(global_max_individual, global_max_group)
+
+    # Set the same y-axis limit for every subplot
+    for ax in axes.flatten():
+        ax.set_ylim(0, global_ymax)
+    
+    # Set overall figure title and adjust layout
+    plt.suptitle("Firing Rates: Individual Recordings and Group-Level Summary", fontsize=16)
     plt.tight_layout(rect=[0, 0, 1, 0.96])
-    plt.ioff() 
-    plt.savefig(os.path.join(firingrates_dir, "group_level_firing_rates.png"), dpi=300, bbox_inches="tight")
+    plt.ioff()
+    composite_filename = os.path.join(firingrates_dir, "firing_rates_dataset_and_group_level.png")
+    plt.savefig(composite_filename, dpi=300, bbox_inches="tight")
     plt.close()
     
+    # Optional: Print the summary stats for debugging
+    print("Final summary_df structure:")
+    print(summary_df.head())
+    print("\nGroup-level summary (Control vs Experimental):")
+    print(group_summary)

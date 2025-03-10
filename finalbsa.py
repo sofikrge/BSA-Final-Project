@@ -2,6 +2,9 @@
 =================================================================================================================================================================================
 BSA Final Assignment - Denise Jaeschke & Sofia Karageorgiou
 =================================================================================================================================================================================
+TODO
+- how did we define the timestamps?
+
 """
 
 #%% Imports
@@ -50,50 +53,41 @@ binsizes = {key: 0.0004 for key in datasets.keys()}
 #%%
 """
 =================================================================================================================================================================================
-Preliminary steps: Understanding our dataset + Extracting the data we need
+Preliminary steps: Understanding our dataset
 =================================================================================================================================================================================
 """
 
 """
-print(type(data3))  # It should be a dictionary
-print(data3.keys())  # Check the keys of the dictionary
-"""
+# Chose a dataset to inspect ctrl_rat_1
+dataset_name = "ctrl_rat_1"
 
-"""
-# Look at content of each key
-print("Event Times:", data3["event_times"].keys())
-print("Event Times:", data3["event_times"])
-print("Saccharin drinking start time:", data3["sacc drinking session start time"])
-print("CTA injection time:", data3["CTA injection time"])
-print("Number of neurons recorded:", len(data3["neurons"]))
-print("Example neuron data3:", data3["neurons"][0])  # Checking the first neuron
-"""
+# Access dataset
+data = datasets[dataset_name]["data"]
+neurons = datasets[dataset_name]["neurons"]
 
-"""
-We got the following correctly and as expected:
-- the times when saccharin and water were given.
-- the start of the saccharin drinking session and the time of LiCl/saline injection.
-- count the number of neurons recorded.
-- print one neuron's data to understand its format.
+print(f"\nDataset: {dataset_name}")
+print("Type:", type(data))  # Should be a dictionary
+print("Keys:", data.keys())  # Check dataset structure
 
-Now, we'll extract the spike data
-"""
+# Check specific details for a single dataset
+print("Event Times:", data["event_times"].keys())
 
-"""
-# Debug prints
-print(ctrl_rat_1_neurons_data[:5])  # Print first 5 neurons of ctrl_rat_1
-print("sacc_start_1:", sacc_start_1)
-print("sacc_start_2:", sacc_start_2)
-print("sacc_start_3:", sacc_start_3)
-print("sacc_start_4:", sacc_start_4)
+print("Water event times:", data["event_times"].get("water", "No water events found"))
+print("Sugar event times:", data["event_times"].get("sugar", "No sugar events found"))
 
-# Number of neurons per dataset
-print("Number of neurons in ctrl_rat_1:", len(ctrl_rat_1_neurons_data))
-print("Number of neurons in ctrl_rat_2:", len(ctrl_rat_2_neurons_data))
-print("Number of neurons in exp_rat_2:", len(exp_rat_2_neurons_data))
-print("Number of neurons in exp_rat_3:", len(exp_rat_3_neurons_data)) 
+print("Saccharin drinking start time:", data.get("sacc drinking session start time"))
+print("CTA injection time:", data.get("CTA injection time"))
 
-Now we know we have 27 neurons recorded for ctr rat 1, 4 for ctr rat 2, 13 for exp rat 2 and 25 for exp rat 3
+# Print total neurons per dataset
+print("Number of neurons per dataset:")
+for dataset_name, dataset in datasets.items():
+    print(f"{dataset_name}: {len(dataset['neurons'])} neurons")
+
+# Check only one neuron
+print("\nExample neuron:")
+print(neurons[0])  # Print only the first neuron
+
+# Now we know we have 27 neurons recorded for ctr rat 1, 4 for ctr rat 2, 13 for exp rat 2 and 25 for exp rat 3
 """
 #%%
 """
@@ -226,7 +220,7 @@ but we decided to keep them for now as we did not find this mentioned in similar
 """
 Overview of this section: 
 1. Firing Rates Across Time Windows for Each Recording + Group level firing rates
-3. Fano factor + CV
+3. Fano factor + CV = Variability
 4. PSTH
 5. Correlograms Pre and Post CTA
 6. TIH, Survivor function and Hazard function
@@ -244,7 +238,7 @@ for name, filename in final_filtered_files.items():
 os.makedirs(save_folder, exist_ok=True)
 analyze_firing_rates(final_filtered_datasets, final_filtered_files, processed_dir, save_folder)
 
-# Fano factor and CV
+#%% Fano factor and CV
 analyze_variability(final_filtered_datasets, processed_dir, final_filtered_files, save_folder)
 
 # %%

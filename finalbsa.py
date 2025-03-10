@@ -19,6 +19,8 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import glob
 import sys
+from tqdm import tqdm
+
 from functions.load_dataset import load_dataset
 from functions.plot_correlogram_matrix import plot_correlogram_matrix
 from functions.isi_tih import isi_tih
@@ -294,8 +296,8 @@ import functions.psth_rasterplot as prp  # to override its figures_dir
 desired_psth_folder = os.path.join("reports", "figures", "psth")
 os.makedirs(desired_psth_folder, exist_ok=True)
 
-# Loop over all datasets/files.
-for dataset_name, (neurons, non_stimuli_time) in final_filtered_datasets.items():
+# Loop over all datasets/files with a progress bar.
+for dataset_name, (neurons, non_stimuli_time) in tqdm(final_filtered_datasets.items(), desc="Processing datasets", ncols=100):
     # Load the associated data.
     data = load_dataset(os.path.join(processed_dir, final_filtered_files[dataset_name]))[0]
     

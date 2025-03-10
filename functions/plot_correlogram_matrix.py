@@ -38,12 +38,10 @@ def plot_correlogram_matrix(neurons_data, binsize, dataset_name, limit=0.02, tim
     grid_data = [[None] * num_neurons for _ in range(num_neurons)] # grid_data will hold computed data for each neuron pair for later plotting.
     
     # First pass: Compute all correlograms and store center bin values.
-    for i, neuron_i in enumerate(neurons_data):
-        for j, neuron_j in enumerate(neurons_data[:i+1]):  # Compute only for i >= j
+    for i, neuron_i in tqdm(enumerate(neurons_data), total=num_neurons, desc="Processing Neurons", ncols=100):
+        for j, neuron_j in tqdm(enumerate(neurons_data[:i+1]), total=i+1, desc=f"Neuron {i+1}", ncols=100, leave=False):
             t1 = neuron_i[:3][2]  # Extract spike times
             t2 = neuron_j[:3][2]  # Extract spike times
-
-            tqdm.write(f"Processing Neuron {i+1} vs Neuron {j+1}...", end="\n", file=sys.stdout)
             
             # Filter spikes to the desired window if provided.
             if time_window is not None:
@@ -85,8 +83,8 @@ def plot_correlogram_matrix(neurons_data, binsize, dataset_name, limit=0.02, tim
     fig, axes = plt.subplots(num_neurons, num_neurons, figsize=(num_neurons * 3, num_neurons * 3))
     
     # Second pass: Plot each correlogram using the computed global_threshold.
-    for i, neuron_i in enumerate(neurons_data):
-        for j, neuron_j in enumerate(neurons_data[:i+1]):
+    for i, neuron_i in tqdm(enumerate(neurons_data), total=num_neurons, desc="Plotting Neurons", ncols=100):
+        for j, neuron_j in tqdm(enumerate(neurons_data[:i+1]), total=i+1, desc=f"Neuron {i+1}", ncols=100, leave=False):
             data = grid_data[i][j]
             counts = data["counts"]
             bins = data["bins"]

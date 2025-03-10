@@ -64,21 +64,49 @@ def psth_raster(group_name, neurons, water_events, sugar_events, cta_time):
                 raster_data.append((rel_spikes[mask], neuron_idx))
         return raster_data
 
-    def compute_psth(events):
+    def moving_average(data, window_size=3):
+        """Computes a moving average with a given window size using a convolution."""
+        kernel = np.ones(window_size) / window_size
+        return np.convolve(data, kernel, mode='same') # same bc we want same length as input, note edge bins will be incorrect 
+
+    def compute_psth(events, apply_smoothing=True):
         bins = np.arange(window[0], window[1] + bin_width, bin_width)
         all_spikes = []
         num_events = len(events) if len(events) > 0 else 1
         num_neurons = len(neurons)
+        
         for neuron in neurons:
             spikes = np.array(neuron[2])
             for event_time in events:
                 rel_spikes = spikes - event_time
                 valid = rel_spikes[(rel_spikes >= window[0]) & (rel_spikes <= window[1])]
                 all_spikes.extend(valid)
+        
         counts, edges = np.histogram(all_spikes, bins=bins)
         psth = counts / (num_events * num_neurons * bin_width)
+        
+        if apply_smoothing:
+            psth = moving_average(psth, window_size=3)
+        
         bin_centers = 0.5 * (edges[:-1] + edges[1:])
         return bin_centers, psth
+    
+    # Compute PSTHs and store them
+    psth_results = {
+        "bin_centers_water_pre": None,
+        "psth_water_pre": None,
+        "bin_centers_sugar_pre": None,
+        "psth_sugar_pre": None,
+        "bin_centers_water_post": None,
+        "psth_water_post": None,
+        "bin_centers_sugar_post": None,
+        "psth_sugar_post": None
+    }
+    
+    psth_results["bin_centers_water_pre"], psth_results["psth_water_pre"] = compute_psth(water_pre)
+    psth_results["bin_centers_sugar_pre"], psth_results["psth_sugar_pre"] = compute_psth(sugar_pre)
+    psth_results["bin_centers_water_post"], psth_results["psth_water_post"] = compute_psth(water_post)
+    psth_results["bin_centers_sugar_post"], psth_results["psth_sugar_post"] = compute_psth(sugar_post)
     
     # Create one figure with 3 rows x 2 columns.
     fig, axs = plt.subplots(3, 2, figsize=(16, 12), sharex=True)
@@ -87,8 +115,12 @@ def psth_raster(group_name, neurons, water_events, sugar_events, cta_time):
     # --- Pre-CTA (left column) ---
     raster_water_pre = gather_raster_data(water_pre)
     raster_sugar_pre = gather_raster_data(sugar_pre)
-    bin_centers_water_pre, psth_water_pre = compute_psth(water_pre)
-    bin_centers_sugar_pre, psth_sugar_pre = compute_psth(sugar_pre)
+    
+    # Use precomputed PSTH values
+    bin_centers_water_pre = psth_results["bin_centers_water_pre"]
+    psth_water_pre = psth_results["psth_water_pre"]
+    bin_centers_sugar_pre = psth_results["bin_centers_sugar_pre"]
+    psth_sugar_pre = psth_results["psth_sugar_pre"]
     
     # Top: Water Raster.
     ax0 = axs[0, 0]
@@ -128,8 +160,11 @@ def psth_raster(group_name, neurons, water_events, sugar_events, cta_time):
     # --- Post-CTA (right column) ---
     raster_water_post = gather_raster_data(water_post)
     raster_sugar_post = gather_raster_data(sugar_post)
-    bin_centers_water_post, psth_water_post = compute_psth(water_post)
-    bin_centers_sugar_post, psth_sugar_post = compute_psth(sugar_post)
+    
+    bin_centers_water_post = psth_results["bin_centers_water_post"]
+    psth_water_post = psth_results["psth_water_post"]
+    bin_centers_sugar_post = psth_results["bin_centers_sugar_post"]
+    psth_sugar_post = psth_results["psth_sugar_post"]
     
     # Top: Water Raster.
     ax3 = axs[0, 1]
@@ -181,3 +216,5 @@ def psth_raster(group_name, neurons, water_events, sugar_events, cta_time):
     fig.savefig(save_path, dpi=300, bbox_inches="tight")
     print(f"Saved figure: {save_path}")
     plt.close(fig)
+
+    return psth_results

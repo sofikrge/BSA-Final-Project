@@ -131,8 +131,8 @@ for dataset_name, dataset in datasets.items():
     correlogram_data = plot_correlogram_matrix(neurons_data=neurons_data,binsize=binsizes[dataset_name],dataset_name=dataset_name,time_window=time_window,save_folder=os.path.join(save_folder, "Correlograms"),store_data=True)
     
     # Retrieve problematic indices from the returned dictionary
-    problematic_neuron_indices = correlogram_data.get("problematic_neuron_indices", set())
-    print(f"Problematic indices for {dataset_name}: {problematic_neuron_indices}")
+    # problematic_neuron_indices = correlogram_data.get("problematic_neuron_indices", set())
+    # print(f"Problematic indices for {dataset_name}: {problematic_neuron_indices}")
 #%% Apply manual filter
 """
 Define a manual filter: specify which neuron indices to fuse for each dataset
@@ -148,6 +148,7 @@ manual_fusion = {
 }
 
 apply_manual_fusion(datasets, manual_fusion, fusion_file_mapping, raw_dir, processed_dir)
+print("Manual fusion has been applied and filtered datasets have been saved.")
 
 #%%
 """
@@ -205,6 +206,7 @@ save_filtered_isi_datasets(
     raw_dir,
     apply_filter=apply_filtering
 )
+print("ISI histograms have been plotted and ISI-filtered datasets have been saved.")
 
 """
 This check showed us that based on our criterion: 
@@ -243,9 +245,11 @@ for name, filename in final_filtered_files.items():
 #%% Firing rates
 os.makedirs(save_folder, exist_ok=True)
 analyze_firing_rates(final_filtered_datasets, final_filtered_files, processed_dir, save_folder)
+print("Firing rates have been plotted and saved.")
 
 # Fano factor and CV
 analyze_variability(final_filtered_datasets, processed_dir, final_filtered_files, save_folder)
+print("Fano factor and CV have been plotted and saved.")
 
 #%% Survivor function and Hazard function
 for dataset_name, (neurons, non_stimuli_time) in final_filtered_datasets.items():
@@ -273,6 +277,7 @@ for dataset_name, (neurons, non_stimuli_time) in final_filtered_datasets.items()
             subfolder=dataset_subfolder,    # One folder per dataset.
             neuron_label=neuron_label
         )
+print("Survivor and Hazard functions have been plotted and saved.")
 
 # %%
 """
@@ -285,36 +290,35 @@ for dataset_name, (neurons, non_stimuli_time) in final_filtered_datasets.items()
 2. Correlograms Pre and Post CTA
 """
 
-# PSTH for each dataset
-# Set the PSTH figures folder to reports/figures/psth.
+# 1. PSTH
+
+# Set the PSTH figures folder
 psthfigures_dir = os.path.join("reports", "figures", "psth")
 os.makedirs(psthfigures_dir, exist_ok=True)
 
-import functions.psth_rasterplot as prp  # to override its figures_dir
+# Create a dictionary to store precomputed PSTH results for all datasets
+psth_data_map = {}
 
-# Set the desired PSTH folder to "reports/figures/psth" and ensure it exists.
-desired_psth_folder = os.path.join("reports", "figures", "psth")
-os.makedirs(desired_psth_folder, exist_ok=True)
-
-# Loop over all datasets/files with a progress bar.
+# Loop over all datasets/files with a progress bar
 for dataset_name, (neurons, non_stimuli_time) in tqdm(final_filtered_datasets.items(), desc="Processing datasets", ncols=100):
-    # Load the associated data.
+    # Load the associated data
     data = load_dataset(os.path.join(processed_dir, final_filtered_files[dataset_name]))[0]
     
-    # Extract water and sugar events (adjust the key names if needed).
+    # Extract water and sugar events
     water_events = np.array(data.get("event_times", {}).get("water", []))
     sugar_events = np.array(data.get("event_times", {}).get("sugar", []))
     
-    # Debug: Print out event counts and CTA time.
+    # Debugging info
     print(f"{dataset_name}: water_events: {len(water_events)}, sugar_events: {len(sugar_events)}")
     cta_time = data.get("CTA injection time", None)
     print(f"{dataset_name}: CTA time: {cta_time}")
     
-    # Use the dataset name as the group name.
-    group_name = dataset_name
-    
-    # Call psth_raster for this dataset.
-    psth_raster(group_name, neurons, water_events, sugar_events, cta_time)
+    # Call psth_raster and store results
+    psth_data = psth_raster(dataset_name, neurons, water_events, sugar_events, cta_time)
+    psth_data_map[dataset_name] = psth_data  # Store precomputed PSTH data
 
-# group_psth_plots(final_filtered_datasets, final_filtered_files, processed_dir)
+# Now, use the precomputed PSTH data to generate the grouped PSTH plots
+group_psth_plots(final_filtered_datasets, final_filtered_files, processed_dir, psth_data_map)
+
+print("PSTH computation and grouping complete!")
 # %%

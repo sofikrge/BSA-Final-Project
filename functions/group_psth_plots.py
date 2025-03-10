@@ -3,7 +3,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from functions.load_dataset import load_dataset
 
-def group_psth_plots(final_filtered_datasets, final_filtered_files, processed_dir):
+def group_psth_plots(final_filtered_datasets, final_filtered_files, processed_dir, psth_data_map):
     """
     Generates a figure with raster plots (top row) and PSTHs (bottom row) for Control and Experimental groups.
     The layout is as follows:
@@ -11,25 +11,9 @@ def group_psth_plots(final_filtered_datasets, final_filtered_files, processed_di
       - Row 1: Raster plots (left: Control, right: Experimental)
       - Row 2: PSTH plots (left: Control, right: Experimental)
     
+    Uses precomputed PSTH values from `psth_data_map` to avoid recomputation.
     """
     window = (-0.5, 2.0)
-    bin_width = 0.05
-    
-    def compute_psth(neurons, events):
-        bins = np.arange(window[0], window[1] + bin_width, bin_width)
-        all_spikes = []
-        num_events = len(events) if len(events) > 0 else 1
-        num_neurons = len(neurons)
-        for neuron in neurons:
-            spikes = np.array(neuron[2])
-            for event_time in events:
-                rel_spikes = spikes - event_time
-                valid = rel_spikes[(rel_spikes >= window[0]) & (rel_spikes <= window[1])]
-                all_spikes.extend(valid)
-        counts, edges = np.histogram(all_spikes, bins=bins)
-        psth = counts / (num_events * num_neurons * bin_width)
-        bin_centers = 0.5 * (edges[:-1] + edges[1:])
-        return bin_centers, psth
     
     groups = {"Control": {"pre": [], "post": []},
               "Experimental": {"pre": [], "post": []}}
@@ -53,30 +37,33 @@ def group_psth_plots(final_filtered_datasets, final_filtered_files, processed_di
             water_post = []
             sugar_post = []
         
-        bc_water_pre, psth_water_pre = compute_psth(neurons, water_pre)
-        bc_sugar_pre, psth_sugar_pre = compute_psth(neurons, sugar_pre)
-        bc_water_post, psth_water_post = compute_psth(neurons, water_post)
-        bc_sugar_post, psth_sugar_post = compute_psth(neurons, sugar_post)
-        
+        # Retrieve precomputed PSTH values from psth_data_map
+        psth_data = psth_data_map[dataset_name]
+        bc_water_pre, psth_water_pre = psth_data["bin_centers_water_pre"], psth_data["psth_water_pre"]
+        bc_sugar_pre, psth_sugar_pre = psth_data["bin_centers_sugar_pre"], psth_data["psth_sugar_pre"]
+        bc_water_post, psth_water_post = psth_data["bin_centers_water_post"], psth_data["psth_water_post"]
+        bc_sugar_post, psth_sugar_post = psth_data["bin_centers_sugar_post"], psth_data["psth_sugar_post"]
+
         spikes_per_trial = lambda spikes, events: [spikes - e for e in events]
-        
+
         spike_trains_pre = [spikes_per_trial(np.array(neuron[2]), water_pre.tolist() + sugar_pre.tolist()) for neuron in neurons]
         spike_trains_post = [spikes_per_trial(np.array(neuron[2]), water_post.tolist() + sugar_post.tolist()) for neuron in neurons]
-        
+
         group = "Control" if "ctrl" in dataset_name.lower() else "Experimental"
         groups[group]["pre"].append((bc_water_pre, psth_water_pre, bc_sugar_pre, psth_sugar_pre))
         groups[group]["post"].append((bc_water_post, psth_water_post, bc_sugar_post, psth_sugar_post))
         raster_data[group]["pre"].extend(spike_trains_pre)
         raster_data[group]["post"].extend(spike_trains_post)
-    
+
+    # Compute global max for uniform PSTH y-axis
     global_max = max(
         max(np.nanmax(psth) if psth.size > 0 else 0 for _, psth, _, _ in grp["pre"] + grp["post"])
         for grp in groups.values()
     )
-    
+
     fig, axs = plt.subplots(2, 2, figsize=(12, 10), sharex=True)
     fig.suptitle("Raster and PSTH by Group and CTA Condition", fontsize=16)
-    
+
     for i, (grp_name, grp_data) in enumerate(raster_data.items()):
         for j, cond in enumerate(["pre", "post"]):
             ax = axs[0, j] if i == 0 else axs[1, j]
@@ -89,7 +76,7 @@ def group_psth_plots(final_filtered_datasets, final_filtered_files, processed_di
             ax.set_title(f"{grp_name} {cond.capitalize()}-CTA Raster")
             ax.set_ylabel("Trials")
             ax.set_xlim(window)
-    
+
     for i, (grp_name, grp_data) in enumerate(groups.items()):
         for j, cond in enumerate(["pre", "post"]):
             ax = axs[1, j]
@@ -102,7 +89,7 @@ def group_psth_plots(final_filtered_datasets, final_filtered_files, processed_di
             ax.set_ylabel("Firing Rate (Hz)")
             ax.set_xlim(window)
             ax.set_ylim(0, global_max)
-    
+
     fig.tight_layout(rect=[0, 0, 1, 0.96])
     save_dir = os.path.join("reports", "figures", "psth")
     os.makedirs(save_dir, exist_ok=True)

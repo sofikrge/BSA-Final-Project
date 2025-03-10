@@ -150,6 +150,8 @@ apply_manual_fusion(datasets, manual_fusion, dataset_files, raw_dir, processed_d
 =================================================================================================================================================================================
 """
 """
+TODO Discuss with Denise
+
 As we were quite lenient with our sorting in the previous criterion, we will now sort out the spikes that are too close to each other 
 and are likely to be noise. We will use the absolute refractory period of 1/2500s to filter out these spikes.
 

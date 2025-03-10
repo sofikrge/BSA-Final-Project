@@ -98,9 +98,9 @@ def plot_correlogram_matrix(neurons_data, binsize, dataset_name, limit=0.02, tim
             # Check if the current correlogram is problematic.
             if i == j:  # autocorrelogram: problematic if either center bin exceeds threshold,
                         # or if the global peak is immediately outside the center bins.
-                condition_A = (counts[center_left] > global_threshold and counts[center_right] > global_threshold)
+                condition_A = (counts[center_left] > global_threshold or counts[center_right] > global_threshold)
                 global_peak_index = int(np.argmax(counts))
-                condition_B = (global_peak_index == center_left - 1 and global_peak_index == center_right + 1)
+                condition_B = (global_peak_index == center_left - 1 or global_peak_index == center_right + 1)
                 is_problematic = condition_A or condition_B
                 if is_problematic:
                     reasons = []
@@ -111,9 +111,9 @@ def plot_correlogram_matrix(neurons_data, binsize, dataset_name, limit=0.02, tim
                     print(f"Neuron {i+1} autocorrelogram is problematic because: {', '.join(reasons)}")
                     problematic_neuron_indices.add(i)
             else:       # cross-correlogram: problematic if both center bins are below threshold.
-                is_problematic = (counts[center_left] == counts.min() and counts[center_right] == counts.min())
+                is_problematic = (counts[center_left] == counts.min() or counts[center_right] == counts.min())
                 if is_problematic:
-                    print(f"Neuron {i+1} vs Neuron {j+1} cross-correlogram is problematic because both center bins are the minimum.")
+                    print(f"Neuron {i+1} vs Neuron {j+1} cross-correlogram is problematic because a center bin is the minimum.")
                     problematic_neuron_indices.add(i)
                     problematic_neuron_indices.add(j)
                     

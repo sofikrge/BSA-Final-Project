@@ -50,7 +50,7 @@ def apply_manual_fusion(datasets, manual_fusion, dataset_files, raw_dir, process
         data["neurons"] = filtered_neurons_data
         
         # Build the output filename with a "_filtered" suffix.
-        output_filename = dataset_name + "_filtered.pkl"
+        output_filename = dataset_name + "_CCfiltered.pkl"
         output_path = os.path.join(processed_dir, output_filename)
         
         # Save the updated dictionary as a pickle file.

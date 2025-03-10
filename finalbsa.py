@@ -124,7 +124,7 @@ datasets = {"ctrl_rat_1": (ctrl_rat_1_neurons_data, non_stimuli_time_1),"ctrl_ra
 
 #%% Loop over each dataset and compute/check the correlogram matrix.
 for dataset_name, (neurons_data, time_window) in datasets.items():
-    print(f"\nProcessing dataset: {dataset_name}")
+    print(f"\nProcessing correlogram for dataset: {dataset_name}. Please be patient, this will take a while.")
     
     # Plot and store correlogram data for this dataset
     correlogram_data = plot_correlogram_matrix(neurons_data=neurons_data,binsize=binsizes[dataset_name],dataset_name=dataset_name,time_window=time_window,save_folder=os.path.join(save_folder, "Correlograms"),store_data=True)
@@ -159,37 +159,53 @@ As we were quite lenient with our sorting in the previous criterion, we will now
 and are likely to be noise. We will use the absolute refractory period of 1/2500s to filter out these spikes.
 
 We searched literature but could not find a paper that explicitly mentioned fitlering out spikes occurring in the absolute refractory period
-so we did not do it.
+so we did both and compared the results.
+
+Note: We went with both, the correlogram and the ISI check because the correlogram gives us a better sense of firing patters as it is not just about consecutive spikes
 """
 
 # Define a dictionary mapping dataset names to filtered file names.
-filtered_files = {"ctrl_rat_1": "ctrl_rat_1_filtered.pkl","ctrl_rat_2": "ctrl_rat_2_filtered.pkl","exp_rat_2":  "exp_rat_2_filtered.pkl","exp_rat_3":  "exp_rat_3_filtered.pkl"}
+filteredCC_files = {"ctrl_rat_1": "ctrl_rat_1_filteredCC.pkl","ctrl_rat_2": "ctrl_rat_2_filteredCC.pkl","exp_rat_2":  "exp_rat_2_filteredCC.pkl","exp_rat_3":  "exp_rat_3_filteredCC.pkl"}
 
-filtered_datasets = {}
+filteredCC_datasets = {}
+
 # Build a dictionary of filtered datasets using the load_dataset helper function
-filtered_datasets = {}
-for name, filename in filtered_files.items():
+for name, filename in filteredCC_files.items():
     file_path = os.path.join(processed_dir, filename)
     data, neurons, non_stimuli_time = load_dataset(file_path)
-    filtered_datasets[name] = (neurons, non_stimuli_time)
+    filteredCC_datasets[name] = (neurons, non_stimuli_time)
+
+# Set this flag to enable or disable filtering
+apply_filtering = True  # Change to False if you want raw ISI histograms without filtering
 
 # Loop over each filtered dataset and plot ISI histograms for all neurons.
-for dataset_name, (neurons_data, non_stimuli_time) in filtered_datasets.items():
+for dataset_name, (neurons_data, non_stimuli_time) in filteredCC_datasets.items():
     print(f"\nProcessing ISI histograms for filtered dataset: {dataset_name}")
     total_neurons = len(neurons_data)
     problematic_count = 0  # Initialize counter for this dataset.
     
     # Process each neuron in the filtered dataset.
     for idx, neuron in enumerate(neurons_data):
-        spike_times = neuron[2]  # Adjust according to your data structure.
-        _, problematic_isis = isi_tih(spike_times,binsize=0.0004,min_interval=1/2500,neuron_id=idx,bins=50,dataset_name=dataset_name,save_folder="reports/figures/TIH",time_window=non_stimuli_time
+        spike_times = neuron[2]  # Extract spike times
+        
+        _, problematic_isis = isi_tih(
+            spike_times,
+            binsize=0.0004,
+            min_interval=0.0004,  # Ensures filtering aligns with threshold
+            neuron_id=idx,
+            bins=50,
+            dataset_name=dataset_name,
+            save_folder="reports/figures/TIH",
+            time_window=non_stimuli_time,
+            apply_filter=apply_filtering  # Toggle filtering on/off
         )
+
         # If there are any problematic ISIs, count this neuron as problematic.
         if problematic_isis.size > 0:
             problematic_count += 1
     
     # After processing all neurons in the dataset, print the summary.
-    print(f"Filtered dataset {dataset_name}: {problematic_count} out of {total_neurons} neurons are problematic.")
+    print(f"ISI/ TIH Filtered dataset {dataset_name}: {problematic_count} out of {total_neurons} neurons are problematic.")
 
 """
 This check showed us that based on our criterion: 
@@ -220,21 +236,21 @@ Overview of this section:
 """
 
 # Define a dictionary mapping dataset names to filtered file names. TODO DELETE BEFORE SUBMISSION AS DUPLICATE
-filtered_files = {"ctrl_rat_1": "ctrl_rat_1_filtered.pkl","ctrl_rat_2": "ctrl_rat_2_filtered.pkl","exp_rat_2":  "exp_rat_2_filtered.pkl","exp_rat_3":  "exp_rat_3_filtered.pkl"}
-filtered_datasets = {}
-filtered_datasets = {}
-for name, filename in filtered_files.items():
+final_filtered_files = {"ctrl_rat_1": "ctrl_rat_1_filtered.pkl","ctrl_rat_2": "ctrl_rat_2_filtered.pkl","exp_rat_2":  "exp_rat_2_filtered.pkl","exp_rat_3":  "exp_rat_3_filtered.pkl"}
+final_filtered_datasets = {}
+final_filtered_datasets = {}
+for name, filename in final_filtered_files.items():
     file_path = os.path.join(processed_dir, filename)
     data, neurons, non_stimuli_time = load_dataset(file_path)
-    filtered_datasets[name] = (neurons, non_stimuli_time)
+    final_filtered_datasets[name] = (neurons, non_stimuli_time)
 
 
 # Firing rates
 os.makedirs(save_folder, exist_ok=True)
-analyze_firing_rates(filtered_datasets, filtered_files, processed_dir, save_folder)
+analyze_firing_rates(final_filtered_datasets, final_filtered_files, processed_dir, save_folder)
 
 # Fano factor and CV
-analyze_variability(filtered_datasets, processed_dir, filtered_files, save_folder)
+analyze_variability(final_filtered_datasets, processed_dir, final_filtered_files, save_folder)
 
 
 # %%

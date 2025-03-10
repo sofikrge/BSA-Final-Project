@@ -2,6 +2,8 @@ import numpy as np
 import matplotlib.pyplot as plt
 import os
 from matplotlib.patches import Patch
+from functions.load_dataset import load_dataset
+import pickle
 
 def filter_invalid_isis(spike_times, min_isi=0.0004, apply_filter=True):
     """

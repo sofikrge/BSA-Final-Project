@@ -112,12 +112,7 @@ Definition of problematic correlograms:
 # File path for processed data
 os.makedirs(processed_dir, exist_ok=True)
 
-binsizes = { 
-    "ctrl_rat_1": 0.0004,
-    "ctrl_rat_2": 0.0004,
-    "exp_rat_2": 0.0004,
-    "exp_rat_3": 0.0004
-}
+binsizes = { "ctrl_rat_1": 0.0004,"ctrl_rat_2": 0.0004,"exp_rat_2": 0.0004,"exp_rat_3": 0.0004}
 
 # Dictionary of datasets:
 datasets = {"ctrl_rat_1": (ctrl_rat_1_neurons_data, non_stimuli_time_1),"ctrl_rat_2": (ctrl_rat_2_neurons_data, non_stimuli_time_2),"exp_rat_2":  (exp_rat_2_neurons_data, non_stimuli_time_3),"exp_rat_3":  (exp_rat_3_neurons_data, non_stimuli_time_4)}
@@ -181,31 +176,12 @@ apply_filtering = True  # Change to False if you want raw ISI histograms without
 # Loop over each filtered dataset and plot ISI histograms for all neurons.
 for dataset_name, (neurons_data, non_stimuli_time) in filteredCC_datasets.items():
     print(f"\nProcessing ISI histograms for filtered dataset: {dataset_name}")
-    total_neurons = len(neurons_data)
-    problematic_count = 0  # Initialize counter for this dataset.
     
     # Process each neuron in the filtered dataset.
     for idx, neuron in enumerate(neurons_data):
         spike_times = neuron[2]  # Extract spike times
         
-        _, problematic_isis = isi_tih(
-            spike_times,
-            binsize=0.0004,
-            min_interval=0.0004,  # Ensures filtering aligns with threshold
-            neuron_id=idx,
-            bins=50,
-            dataset_name=dataset_name,
-            save_folder="reports/figures/TIH",
-            time_window=non_stimuli_time,
-            apply_filter=apply_filtering  # Toggle filtering on/off
-        )
-
-        # If there are any problematic ISIs, count this neuron as problematic.
-        if problematic_isis.size > 0:
-            problematic_count += 1
-    
-    # After processing all neurons in the dataset, print the summary.
-    print(f"ISI/ TIH Filtered dataset {dataset_name}: {problematic_count} out of {total_neurons} neurons are problematic.")
+        isi_tih(spike_times,binsize=0.0004,min_interval=0.0004,neuron_id=idx,bins=50,dataset_name=dataset_name,save_folder="reports/figures/TIH",time_window=non_stimuli_time,apply_filter=apply_filtering)
 
 """
 This check showed us that based on our criterion: 
@@ -236,7 +212,7 @@ Overview of this section:
 """
 
 # Define a dictionary mapping dataset names to filtered file names. TODO DELETE BEFORE SUBMISSION AS DUPLICATE
-final_filtered_files = {"ctrl_rat_1": "ctrl_rat_1_filtered.pkl","ctrl_rat_2": "ctrl_rat_2_filtered.pkl","exp_rat_2":  "exp_rat_2_filtered.pkl","exp_rat_3":  "exp_rat_3_filtered.pkl"}
+final_filtered_files = {"ctrl_rat_1": "ctrl_rat_1__ISIfiltered.pkl","ctrl_rat_2": "ctrl_rat_2_ISIfiltered.pkl","exp_rat_2":  "exp_rat_2_ISIfiltered.pkl","exp_rat_3":  "exp_rat_3_ISIfiltered.pkl"}
 final_filtered_datasets = {}
 final_filtered_datasets = {}
 for name, filename in final_filtered_files.items():

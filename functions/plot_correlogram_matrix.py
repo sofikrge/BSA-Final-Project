@@ -87,7 +87,7 @@ def plot_correlogram_matrix(neurons_data, binsize, dataset_name, limit=0.02, tim
     # Create matrix plot grid
     fig, axes = plt.subplots(num_neurons, num_neurons, figsize=(num_neurons * 3, num_neurons * 3))
 
-    # Second pass: Plot each correlogram.
+    # Plot each correlogram
     for i in tqdm(range(num_neurons), desc="Plotting correlograms", ncols=100):
         for j in range(i+1):
             data = grid_data[i][j]
@@ -98,7 +98,7 @@ def plot_correlogram_matrix(neurons_data, binsize, dataset_name, limit=0.02, tim
 
             # Determine if the correlogram is problematic.
             if i == j:
-                # Autocorrelogram: problematic if either center bin exceeds threshold or global peak is immediately outside center bins.
+                # Autocorrelogram: problematic if either center bin exceeds threshold or global peak is immediately outside center bins
                 condition_A = (counts[center_left] > global_threshold or counts[center_right] > global_threshold)
                 global_peak_index = int(np.argmax(counts))
                 condition_B = (global_peak_index == center_left - 1 or global_peak_index == center_right + 1)
@@ -112,13 +112,13 @@ def plot_correlogram_matrix(neurons_data, binsize, dataset_name, limit=0.02, tim
                     problematic_neuron_indices.add(i)
                     problematic_neuron_indices.add(j)
 
-            # Determine color for plotting.
+            # Determine color based on problematic status
             if is_problematic:
                 color = '#FFFF99'
             else:
                 color = '#77DD77' if i == j else '#CDA4DE'
 
-            # Plot in the matrix.
+            # Plot in the matrix
             ax = axes[i, j] if num_neurons > 1 else axes
             ax.bar(bin_centers, counts, width=np.diff(bins), align='center', color=color, alpha=0.7,
                    edgecolor='k', linewidth=0.25)
@@ -127,7 +127,7 @@ def plot_correlogram_matrix(neurons_data, binsize, dataset_name, limit=0.02, tim
             ax.set_yticks([])
             ax.axvline(center_line, color='black', linestyle='--', linewidth=0.5)
 
-            # Highlight the center bins in pastel pink.
+            # Highlight the center bins in pastel pink
             pink_color = '#FFB6C1'
             ax.bar(bin_centers[center_left:center_left+1],
                    counts[center_left:center_left+1],
@@ -138,7 +138,7 @@ def plot_correlogram_matrix(neurons_data, binsize, dataset_name, limit=0.02, tim
                    width=np.diff(bins)[center_right:center_right+1],
                    align='center', color=pink_color, alpha=1, edgecolor='k', linewidth=0.25)
 
-            # For the upper triangle, mirror the plot.
+            # For the upper triangle, mirror the plot
             if i != j:
                 ax_mirror = axes[j, i] if num_neurons > 1 else axes
                 ax_mirror.bar(-bin_centers, counts, width=np.diff(bins), align='center', color=color, alpha=0.7,
@@ -156,7 +156,7 @@ def plot_correlogram_matrix(neurons_data, binsize, dataset_name, limit=0.02, tim
                               width=np.diff(bins)[center_right:center_right+1],
                               align='center', color=pink_color, alpha=1, edgecolor='k', linewidth=0.25)
 
-            # Label the first row and column.
+            # Label the first row and column
             if i == 0:
                 ax.set_title(f"Neuron {j+1}")
             if j == 0:
@@ -165,24 +165,23 @@ def plot_correlogram_matrix(neurons_data, binsize, dataset_name, limit=0.02, tim
     plt.suptitle(f"Cross-correlogram (Bin Size = {binsize:.4f}s)", fontsize=16)
     plt.tight_layout()
 
-    # Create legend patches.
+    # Create legends
     patch_auto = mpatches.Patch(color='#77DD77', label='Autocorrelogram (non-problematic)')
     patch_cross = mpatches.Patch(color='#CDA4DE', label='Cross-correlogram (non-problematic)')
     patch_prob = mpatches.Patch(color='#FFFF99', label='Problematic')
     patch_center = mpatches.Patch(color='#FFB6C1', label='Center bins')
     patch_thresh = Line2D([], [], color='none', label=f'Global threshold: {global_threshold:.2e}')
-
     fig.legend(handles=[patch_auto, patch_cross, patch_prob, patch_center, patch_thresh],
                loc='upper right', ncol=1)
 
-    # Save the figure.
+    # Save the figure & store data (optional)
     if save_folder is None:
         save_folder = os.path.join(os.getcwd(), "reports", "figures")
     os.makedirs(save_folder, exist_ok=True)
     save_path = os.path.join(save_folder, f"{dataset_name}_correlogram.png")
     plt.savefig(save_path, dpi=150, bbox_inches='tight')
-    plt.close()  # Free memory
-
+    plt.close() 
+    
     if store_data:
         correlogram_data["global_threshold"] = global_threshold
         correlogram_data["problematic_neuron_indices"] = problematic_neuron_indices

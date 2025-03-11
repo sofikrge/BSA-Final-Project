@@ -152,7 +152,7 @@ for dataset_name, dataset in datasets.items():
     
     correlogram_data = plot_correlogram_matrix(neurons_data=neurons_data,binsize=binsizes[dataset_name],dataset_name=dataset_name,time_window=time_window,save_folder=os.path.join(save_folder, "Correlograms"),store_data=True)
     
-    # Retrieve problematic indices from the returned dictionary
+    # Prints to aid with exclusion decision
     # problematic_neuron_indices = correlogram_data.get("problematic_neuron_indices", set())
     # print(f"Problematic indices for {dataset_name}: {problematic_neuron_indices}")
 #%% Apply manual filter

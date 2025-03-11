@@ -57,7 +57,7 @@ Descriptive metrics:
     mainly used to detect burst activity and refractory period
     focuses on risk of an event happening regardless of history
     basically rate at which survivor function decays
-    might get very noisy at the end because there are only few neurons that spike with such long ISI
+    => we decided not to look into bc we do not a lot of neurons to begin with, might get very noisy at the end because there are only few neurons that spike with such long ISI
 
 Gameplan for exclusion
 - only look at unstimulated phase
@@ -132,10 +132,9 @@ data = datasets[dataset_name]["data"]
 neurons = datasets[dataset_name]["neurons"]
 
 print(f"\nDataset: {dataset_name}")
-print("Type:", type(data))  # Should be a dictionary
-print("Keys:", data.keys())  # Check dataset structure
+print("Type:", type(data)) 
+print("Keys:", data.keys())
 
-# Check specific details for a single dataset
 print("Event Times:", data["event_times"].keys())
 
 print("Water event times:", data["event_times"].get("water", "No water events found"))
@@ -144,14 +143,12 @@ print("Sugar event times:", data["event_times"].get("sugar", "No sugar events fo
 print("Saccharin drinking start time:", data.get("sacc drinking session start time"))
 print("CTA injection time:", data.get("CTA injection time"))
 
-# Print total neurons per dataset
 print("Number of neurons per dataset:")
 for dataset_name, dataset in datasets.items():
     print(f"{dataset_name}: {len(dataset['neurons'])} neurons")
 
-# Check only one neuron
-print("\nExample neuron:")
-print(neurons[0])  # Print only the first neuron
+print("Example neuron:")
+print(neurons[0])
 
 # Now we know we have 27 neurons recorded for ctr rat 1, 4 for ctr rat 2, 13 for exp rat 2 and 25 for exp rat 3
 """
@@ -289,7 +286,7 @@ but we decided to keep them for now as we did not find this mentioned in similar
 Overview of this section: 
 1. Firing Rates Across Time Windows for Each Recording + Group level firing rates
 2. Fano factor + CV = Variability
-3. TIH, Survivor function and Hazard function
+3. Survivor function
 """
 
 # Define a dictionary mapping dataset names to filtered file names
@@ -300,7 +297,7 @@ for name, filename in final_filtered_files.items():
     data, neurons, non_stimuli_time = load_dataset(file_path) 
     final_filtered_datasets[name] = (neurons, non_stimuli_time)
 
-#%% Firing rates
+# Firing rates
 os.makedirs(save_folder, exist_ok=True)
 analyze_firing_rates(final_filtered_datasets, final_filtered_files, processed_dir, save_folder)
 print("Firing rates have been plotted and saved.")
@@ -309,7 +306,7 @@ print("Firing rates have been plotted and saved.")
 analyze_variability(final_filtered_datasets, processed_dir, final_filtered_files, save_folder)
 print("Fano factor and CV have been plotted and saved.")
 
-#%% Survivor function
+# Survivor function to check for potential burst activity
 for dataset_name, (neurons, non_stimuli_time) in final_filtered_datasets.items():
     # Load the associated data to extract sacc_start and cta_time.
     data = load_dataset(os.path.join(processed_dir, final_filtered_files[dataset_name]))[0]
@@ -346,8 +343,7 @@ print("Survivor functions have been plotted and saved.")
 =================================================================================================================================================================================
 """
 """
-1. PSTH
-2. Correlograms Pre and Post CTA
+PSTH
 """
 
 # 1. PSTH

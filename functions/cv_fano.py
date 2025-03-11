@@ -1,11 +1,14 @@
 import matplotlib.pyplot as plt
 import numpy as np
 import os
-import pandas as pd
 from functions.load_dataset import load_dataset
 
 def compute_cv_isi(neurons, time_window):
-    """Computes the Coefficient of Variation (CV) of Interspike Intervals (ISI) for neurons. ratio of the standard deviation of the inter-spike intervals (ISIs) to their mean"""
+    """
+    Computes the Coefficient of Variation (CV) of Interspike Intervals (ISI) for neurons. 
+    ratio of the standard deviation of the inter-spike intervals (ISIs) to their mean
+    => take ISIs and look at how spread out they are relative to their mean
+    """
     start, end = time_window
     cv_values = []
     for neuron in neurons:
@@ -18,7 +21,11 @@ def compute_cv_isi(neurons, time_window):
     return cv_values
 
 def compute_fano_factor(neurons, time_window, bin_width=0.05):
-    """Computes the Fano Factor for neurons over a given time window dividing the variance of the spike counts by the mean spike count"""
+    """
+    Computes the Fano Factor for neurons over a given time window dividing the variance 
+    of the spike counts by the mean spike count
+    => binnin spike train and measuring count variance relative to count mean
+    """
     start, end = time_window
     fano_values = []
     for neuron in neurons:
@@ -33,17 +40,15 @@ def compute_fano_factor(neurons, time_window, bin_width=0.05):
 
 def analyze_variability(filtered_datasets, processed_dir, filtered_files, save_folder):
     """
-    Computes and plots the Coefficient of Variation (CV) of ISIs and the Fano Factor across different time windows.
-    This version creates composite figures with file-level plots (boxplots) in the top row and group-level plots (bar plots)
-    in the bottom row (one column per time window). The y-axis scaling is set to be identical across all subplots.
+    For each dataset compute CV of ISIs and Fano Factor in 3 time windows
+    Produces 2x3 figure with:
+        - top row: boxplots of CV and Fano Factor for each dataset in each time window
+        - bottom row: bar plots of group-level CV and Fano Factor for each time window
     """
-    
-    # Pre-load all datasets to avoid re-loading for every time window
-    loaded_data = {}
+    loaded_data = {}# preload once
     for dataset_name in filtered_datasets.keys():
         loaded_data[dataset_name] = load_dataset(os.path.join(processed_dir, filtered_files[dataset_name]))[0]
 
-    
     variability_dir = os.path.join(save_folder, "CV_FF")
     os.makedirs(variability_dir, exist_ok=True)
     
@@ -56,7 +61,7 @@ def analyze_variability(filtered_datasets, processed_dir, filtered_files, save_f
     fano_file_max_list = []
     fano_group_max_list = []
     
-    # Create composite figures (2 rows x 3 columns)
+    # Create 2x3 figure
     fig_cv, axs_cv = plt.subplots(2, 3, figsize=(18, 10))
     fig_fano, axs_fano = plt.subplots(2, 3, figsize=(18, 10))
     
@@ -82,18 +87,17 @@ def analyze_variability(filtered_datasets, processed_dir, filtered_files, save_f
             
             cv_values = compute_cv_isi(neurons, time_window=twindow)
             fano_values = compute_fano_factor(neurons, time_window=twindow, bin_width=0.05)
-            
             cv_data.append(cv_values)
             fano_data.append(fano_values)
             labels.append(dataset_name)
             
-            # Compute file-level mean values for group-level plotting
+            # Compute file-level mean
             cv_mean = np.nanmean(cv_values)
             fano_mean = np.nanmean(fano_values)
             cv_file_means.append(cv_mean)
             fano_file_means.append(fano_mean)
             
-            # Determine group from dataset name (minimal logic change)
+            # Determine group from dataset name
             group = "Control" if "ctrl" in dataset_name.lower() else "Experimental"
             dataset_groups.append(group)
             
@@ -126,7 +130,7 @@ def analyze_variability(filtered_datasets, processed_dir, filtered_files, save_f
             file_fano_max = 0
         fano_file_max_list.append(file_fano_max)
         
-        # Compute group-level summaries
+        # Group-level summaries
         group_dict_cv = {"Control": [], "Experimental": []}
         group_dict_fano = {"Control": [], "Experimental": []}
         for j, grp in enumerate(dataset_groups):
@@ -137,6 +141,7 @@ def analyze_variability(filtered_datasets, processed_dir, filtered_files, save_f
         group_cv_stds = {}
         group_fano_means = {}
         group_fano_stds = {}
+        
         for grp in ["Control", "Experimental"]:
             if group_dict_cv[grp]:
                 group_cv_means[grp] = np.nanmean(group_dict_cv[grp])
@@ -152,6 +157,7 @@ def analyze_variability(filtered_datasets, processed_dir, filtered_files, save_f
                 group_fano_stds[grp] = 0
         
         groups = ["Control", "Experimental"]
+        
         # Group-level bar plots (bottom row)
         cv_group_vals = [group_cv_means[g] for g in groups]
         cv_group_errs = [group_cv_stds[g] for g in groups]
@@ -175,24 +181,22 @@ def analyze_variability(filtered_datasets, processed_dir, filtered_files, save_f
     for ax in axs_cv.flatten():
         ax.set_ylim(0, 15)
 
-    
-    # Set the same y-axis scaling across all subplots for Fano Factor
+    # Same y-axis scaling across all subplots for FF
     global_fano_ymax = max(max(fano_file_max_list), max(fano_group_max_list))
     for ax in axs_fano.flatten():
         ax.set_ylim(0, global_fano_ymax)
     
-    # Finalize and save composite figures
+    # Save figures
     fig_cv.suptitle("CV of ISIs Across Time Windows and Recordings (File & Group Level)", fontsize=16)
     fig_cv.tight_layout(rect=[0, 0, 1, 0.96])
     cv_filename = os.path.join(variability_dir, "cv_composite.png")
     fig_cv.savefig(cv_filename, dpi=300, bbox_inches="tight")  # Use fig_cv.savefig(...)
     plt.close(fig_cv)
-
     fig_fano.suptitle("Fano Factor of Spike Counts Across Time Windows and Recordings (File & Group Level)", fontsize=16)
     fig_fano.tight_layout(rect=[0, 0, 1, 0.96])
     fano_filename = os.path.join(variability_dir, "fano_composite.png")
     fig_fano.savefig(fano_filename, dpi=150, bbox_inches="tight")  # Use fig_fano.savefig(...)
     plt.close(fig_fano)
 
-# Explicitly export it
+# Explicitly export it bc we had issues importing it in our main script
 __all__ = ["analyze_variability"]

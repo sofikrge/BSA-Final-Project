@@ -11,6 +11,8 @@ All TODO s
     - compare our calculations with what was done in tirgulim to be on the safe side
     - try out code on a windows computer
     - RASTERPLOTS LOOK WEIRD
+    - check all figures carefully
+    - why did we calc the cv of the isis and not the cv in general
 """
 """
 Class notes on metrics:
@@ -130,7 +132,7 @@ print(neurons[0])
 =================================================================================================================================================================================
 """
 """
-
+1. Correlogram
 Notes on process
 - first did 0-tolerance plotting, almost all neurons would have to be excluded
 - thought about noise, distant neurons affecting the recording etc. 
@@ -145,8 +147,12 @@ Bin sizes & time-related decisions
     -> Link: https://www.sciencedirect.com/topics/medicine-and-dentistry/refractory-period
 - Only look at unstimulated phase to be able to see the relative refrac period as well
 
-"""
+2. Manual fusion based on correlogram results
+- As the autocorrelograms don't look too faulty, we decided to fuse neurons that are likely to be the same neuron
+- We were quite lenient at this stage as we did want to be balanced regarding how much data we lose
 
+"""
+# 1. Correlogram
 for dataset_name, dataset in datasets.items():
     neurons_data = dataset["neurons"]
     time_window = dataset["non_stimuli_time"]
@@ -158,14 +164,9 @@ for dataset_name, dataset in datasets.items():
     # print(f"Problematic indices for {dataset_name}: {problematic_neuron_indices}")
 
 print("\nAll correlograms have been plotted and saved.")
-#%% Apply manual filter
-"""
-Manual filter based on correlogram results
-- As the autocorrelograms don't look too faulty, we decided to fuse neurons that are likely to be the same neuron
-- We were quite lenient at this stage as we did want to be balanced regarding how much data we lose
-"""
-fusion_file_mapping = {"ctrl_rat_1": ("ctrl rat 1.pkl", "ctrl_rat_1_filtered.pkl"),"ctrl_rat_2": ("ctrl rat 2.pkl", "ctrl_rat_2_filtered.pkl"),"exp_rat_2":  ("exp rat 2.pkl", "exp_rat_2_filtered.pkl"),"exp_rat_3":  ("exp rat 3.pkl", "exp_rat_3_filtered.pkl")}
 
+# 2. Manual filter
+fusion_file_mapping = {"ctrl_rat_1": ("ctrl rat 1.pkl", "ctrl_rat_1_filtered.pkl"),"ctrl_rat_2": ("ctrl rat 2.pkl", "ctrl_rat_2_filtered.pkl"),"exp_rat_2":  ("exp rat 2.pkl", "exp_rat_2_filtered.pkl"),"exp_rat_3":  ("exp rat 3.pkl", "exp_rat_3_filtered.pkl")}
 manual_fusion = {
     "ctrl_rat_1": [{0, 2}, {21, 22, 23, 24}], 
     "ctrl_rat_2": [{0, 1, 2}], # e.g. meaning: fuse 0 1 and 2 into one neuron
@@ -260,7 +261,7 @@ We decided to keep the first spike and remove all spikes that are too close to t
 """
 Overview of this section: 
 1. Firing Rates Across Time Windows for Each Recording + Group level firing rates
-2. Fano factor + CV = Variability
+2. Fano factor + CV = Variability -> for Poisson process CV = 1, Fano = 1
 3. Survivor function
 """
 

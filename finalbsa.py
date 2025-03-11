@@ -149,21 +149,21 @@ print(neurons[0])
 =================================================================================================================================================================================
 """
 """
+
 Notes on process
 - first did 0-tolerance plotting, almost all neurons would have to be excluded
-- thought about noise, distant neurons affecting the recording etc. -> decided to say that mean + 2 stds of central bins of autocorrelogram are the threshold for autocorrelograms
-and for cross-correlograms we check whether the central bins are the minima within that correlogram. if they are, the correlogram is considered to be problematic
-
-Bin sizes decision
-- We chose 0.0004s for all datasets because of our exclusion criteria -> elsevier "2 Define refractory period.
-- Immediately after a nerve impulse is triggered, an ordinary stimulus is not able to generate another impulse. This brief period is termed the refractory period. 
-- The refractory period consists of two phases—the absolute refractory period and the relative refractory period. The absolute refractory period lasts about 1/2500 of a second and is followed by the relative refractory period. 
-- During the relative refractory period, a higher intensity stimulus can trigger an impulse."
-- https://www.sciencedirect.com/topics/medicine-and-dentistry/refractory-period
-
-Definition of problematic correlograms:
+- thought about noise, distant neurons affecting the recording etc. 
+Our final criteria:
 - for autocorrelograms: if either center bin exceeds global_threshold (mean + 2 stds of all correlogram center bins), or if the global peak is immediately outside the center bins.
 - for cross-correlograms: if both center bins are the minima for the correlogram
+    
+Bin sizes & time-related decisions
+- We chose 0.0004s for all datasets because of our exclusion criteria 
+    -> Elsevier "The absolute refractory period lasts about 1/2500 of a second and is followed by the relative refractory period. 
+    -> During the relative refractory period, a higher intensity stimulus can trigger an impulse."
+    -> Link: https://www.sciencedirect.com/topics/medicine-and-dentistry/refractory-period
+- Only look at unstimulated phase to be able to see the relative refrac period as well
+
 """
 
 # Compute the correlogram matrix.

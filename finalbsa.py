@@ -9,27 +9,6 @@ TODO
     - double-check how did we define the timestamps?
     - when do we want to look at which time window? 
     - compare our calculations with what was done in tirgulim to be on the safe side
-
-To compare at the end:
-- subtract baseline non-stimulus firing rate from evoked responses to see how much they change -> 2 plots: control water and sugar + experimental water and sugar
-- statistical analysis to see if the changes are significant
-- can one correlate metrics over time windows? e.g., correlation of neuron 1 precta with neuron 1 postcta: high correlation would mean firing remains similar
-    while low correlation would mean the response changed -> maybe create heatmaps with different colors for different degrees of correlation?
-Chats notes on that:
-1. Subtract Baseline from Evoked Response: 
-   - **Idea:** Compute the difference between the baseline (non-stimulus) firing rate and the evoked firing rate (during taste presentations).  
-   - **Visualization:** Create separate plots for control and experimental conditions for water and sugar. This directly shows how much each neuron's firing rate changes from baseline.  
-   - **Statistical Analysis:** You can run paired statistical tests (e.g., paired t-test or Wilcoxon signed-rank test) to assess if the change is significant within groups, and then compare between control and experimental groups.
-2. Correlation of Metrics Over Time Windows:
-   - **Idea:** Compute metrics (e.g., CV, Fano Factor, or even raw firing rate) per neuron for different time windows (e.g., pre-CTA vs. post-CTA). Then, correlate these metrics for each neuron.  
-   - **Interpretation:**  
-     - A high correlation indicates that the relative firing properties remain similar across conditions (e.g., a neuron that is bursty pre-CTA remains bursty post-CTA).  
-     - A low correlation suggests that the firing properties have shifted—perhaps due to the effects of CTA.  
-   - **Visualization:** Creating heatmaps of the correlation coefficients (using, say, different colors to indicate degrees of similarity/difference) is a great idea. This can provide a quick visual reference for which neurons change most dramatically.
-3. Implementation Considerations:
-   - When subtracting baseline from evoked responses, ensure you're aligning the time windows correctly.  
-   - For the correlation analysis, you might want to compute the metric per neuron in each time window and then use a scatter plot (or a correlation matrix/heatmap) to compare the values.
-   - It's also useful to check the overall distribution of these metrics to see if any neurons are outliers and how that might affect your statistical tests.
 """
 """
 Class notes on metrics:
@@ -166,10 +145,9 @@ Bin sizes & time-related decisions
 
 """
 
-# Compute the correlogram matrix.
 for dataset_name, dataset in datasets.items():
     neurons_data = dataset["neurons"]
-    time_window = dataset["non_stimuli_time"] # because we we want to see a clearer relative refrac period as well
+    time_window = dataset["non_stimuli_time"]
     print(f"\nProcessing Correlogram for Dataset: {dataset_name}. Please be patient, this might take a while.")
     
     correlogram_data = plot_correlogram_matrix(neurons_data=neurons_data,binsize=binsizes[dataset_name],dataset_name=dataset_name,time_window=time_window,save_folder=os.path.join(save_folder, "Correlograms"),store_data=True)

@@ -54,7 +54,7 @@ def plot_correlogram_matrix(neurons_data, binsize, dataset_name, limit=0.02, tim
     # First pass: Compute all correlograms in parallel using joblib
     results = Parallel(n_jobs=-1)(
         delayed(compute_correlogram)(i, j, prefiltered_spikes, binsize, limit)
-        for i, j in tqdm(tasks, desc="Computing correlograms", ncols=100)
+        for i, j in tqdm(tasks, desc="Computing correlogram", ncols=100)
     )
 
     # Allocate data structures.
@@ -90,7 +90,7 @@ def plot_correlogram_matrix(neurons_data, binsize, dataset_name, limit=0.02, tim
     fig, axes = plt.subplots(num_neurons, num_neurons, figsize=(num_neurons * 3, num_neurons * 3))
 
     # Second pass: Plot each correlogram.
-    for i in tqdm(range(num_neurons), desc="Plotting neurons", ncols=100):
+    for i in tqdm(range(num_neurons), desc="Plotting correlograms", ncols=100):
         for j in range(i+1):
             data = grid_data[i][j]
             counts = data["counts"]

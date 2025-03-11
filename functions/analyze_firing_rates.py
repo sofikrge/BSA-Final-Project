@@ -193,7 +193,7 @@ def analyze_firing_rates(filtered_datasets, filtered_files, processed_dir, save_
     plt.close()
     
     # Optional: Print the summary stats for debugging
-    print("Final summary_df structure:")
+    print("Final summary of firing rates:")
     print(summary_df.head())
-    print("\nGroup-level summary (Control vs Experimental):")
+    print("\nGroup-level summary of firing rates (Control vs Experimental):")
     print(group_summary)

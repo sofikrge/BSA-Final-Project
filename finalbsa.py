@@ -9,8 +9,6 @@ TODO
     - how did we define the timestamps?
     - when do we want to look at which time window? 
     - compare our calculations with what was done in tirgulim to be on the safe side
-    - do we want firing rates over the entire time window or just the mean?
-    - psth & survivor hazard are saving to the wrong folder
     - our correlogram calculations are different than those in class
 
 To compare at the end:
@@ -70,14 +68,8 @@ Initial plan for exclusion:
 """
 
 #%% Imports, loading data, and setting up directories
-import pickle
-import re
 import numpy as np
 import os
-import pandas as pd
-import matplotlib.pyplot as plt
-import glob
-import sys
 from tqdm import tqdm
 
 from functions.load_dataset import load_dataset
@@ -233,7 +225,7 @@ apply_filtering = True
 
 # Plot ISI histograms for all neurons
 for dataset_name, (neurons_data, non_stimuli_time) in filteredCC_datasets.items():
-    print(f"\Creating TIHs for filtered dataset: {dataset_name}")
+    print(f"Creating TIHs for filtered dataset: {dataset_name}")
     
     for idx, neuron in enumerate(neurons_data):
         spike_times = neuron[2]  # Extract spike times
@@ -351,11 +343,11 @@ print("Survivor functions have been plotted and saved.")
 """
 1. Rasterplots + smoothed PSTH
 2. 2x2 bar plots PSTHs + dataset summaries, with baseline subtraction = Y-Axis shows the diff btw baseline and evoked response
-3. Cross-correlograms Pre & Post CTA
+3. TODO Ask Denise: Cross-correlograms Pre & Post CTA
 """
 
 # 1. Rasterplots + smoothed PSTH
-psthfigures_dir = os.path.join(base_dir, "reports", "figures", "psth")
+psthfigures_dir = os.path.join(base_dir, "reports", "figures", "PSTH_Raster")
 os.makedirs(psthfigures_dir, exist_ok=True)
 
 # store precomputed PSTH data

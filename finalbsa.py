@@ -154,6 +154,8 @@ for dataset_name, dataset in datasets.items():
     # Prints to aid with exclusion decision
     # problematic_neuron_indices = correlogram_data.get("problematic_neuron_indices", set())
     # print(f"Problematic indices for {dataset_name}: {problematic_neuron_indices}")
+
+print("\nAll correlograms have been plotted and saved.")
 #%% Apply manual filter
 """
 Manual filter based on correlogram results
@@ -170,7 +172,7 @@ manual_fusion = {
 }
 
 apply_manual_fusion(datasets, manual_fusion, fusion_file_mapping, raw_dir, processed_dir)
-print("Manual fusion has been applied and filtered datasets have been saved.")
+print("\nAll manual fusions have been processed and filtered datasets have been saved.")
 
 #%%
 """
@@ -179,15 +181,21 @@ print("Manual fusion has been applied and filtered datasets have been saved.")
 =================================================================================================================================================================================
 """
 """
-TODO Discuss with Denise
 
-As we were quite lenient with our sorting in the previous criterion, we will now sort out the spikes that are too close to each other 
-and are likely to be noise. We will use the absolute refractory period of 1/2500s to filter out these spikes.
+As we were quite lenient with our sorting in the previous criterion, 
+we will now sort out the spikes that are too close to each other 
+and must be due to be noise or incorrect spike sorting. 
+We will use the absolute refractory period of 1/2500s to filter out these spikes.
 
-We searched literature but could not find a paper that explicitly mentioned fitlering out spikes occurring in the absolute refractory period
-so we did both and compared the results.
+We searched literature but could not find a paper that explicitly 
+mentioned fitlering out spikes occurring in the absolute refractory period
+so we tried it out compared the distributions.
 
-Note: We went with both, the correlogram and the ISI check because the correlogram gives us a better sense of firing patters as it is not just about consecutive spikes
+Note: 
+    We went with both, the correlogram and the ISI check because 
+    the correlogram gives us a better sense of firing patters as 
+    it is not just about consecutive spikes
+
 """
 
 # Define a dictionary mapping dataset names to filtered file names.
@@ -226,7 +234,7 @@ save_filtered_isi_datasets(
     raw_dir,
     apply_filter=apply_filtering
 )
-print("TIHs have been plotted and ISI-filtered datasets have been saved.")
+print("\nAll TIHs have been plotted and ISI-filtered datasets have been saved.")
 
 """
 Checking the debug prints showed us that based on our criterion: 
@@ -309,7 +317,7 @@ for dataset_name, (neurons, non_stimuli_time) in tqdm(final_filtered_datasets.it
         metrics_list, dataset_name, os.path.join(base_dir, "reports", "figures")
     )
 
-print("Survivor functions have been plotted and saved.")
+print("\nAll Survivor Functions have been plotted and saved.")
 
 # %%
 """
@@ -352,7 +360,7 @@ for dataset_name, (neurons, non_stimuli_time) in tqdm(final_filtered_datasets.it
     
     psth_data_map[dataset_name] = psth_data
 
-print("Raster plots and smoothed PSTHs have been saved.")
+print("\nAll Raster Plots and Smoothed PSTHs have been saved.")
 
 # 2. 2x2 bar plots PSTHs + dataset summaries
 raster_figures_dir = os.path.join(base_dir, "reports", "figures", "PSTH_TwoByTwo")
@@ -378,7 +386,7 @@ for dataset_name, (neurons, non_stimuli_time) in final_filtered_datasets.items()
         bin_width=0.05 #ms
     )
 
-print("All 2x2 PSTH plots have been saved successfully!")
+print("\nAll 2x2 PSTH plots have been saved successfully!")
 #%% 3. Cross-correlograms Pre & Post CTA
 #%% YAY, we're done!
-print("Analysis completed! Thanks a bunch for your patience :)")
+print("\nAnalysis completed! Thanks a bunch for your patience :)")

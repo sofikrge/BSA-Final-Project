@@ -1,7 +1,6 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import os
-from matplotlib.patches import Patch
 from functions.load_dataset import load_dataset
 import pickle
 
@@ -13,7 +12,7 @@ def filter_invalid_isis(spike_times, min_isi=0.0004, apply_filter=True):
         return spike_times  # Skip filtering if disabled
     
     if len(spike_times) < 2:
-        return spike_times  # No filtering needed if there's only one spike
+        return spike_times  # if only one spike no filtering
 
     spike_times = np.array(spike_times)
     isi = np.diff(spike_times)  # Compute ISIs
@@ -25,8 +24,8 @@ def filter_invalid_isis(spike_times, min_isi=0.0004, apply_filter=True):
     filtered_spike_times = np.insert(spike_times[valid_indices], 0, spike_times[0])
     
     # Print number of removed spikes
-    removed_spikes = len(spike_times) - len(filtered_spike_times)
-    total_spikes = len(spike_times)
+    # removed_spikes = len(spike_times) - len(filtered_spike_times)
+    # total_spikes = len(spike_times)
     # print(f"Removed {removed_spikes} out of {total_spikes} spikes due to ISI ≤ {min_isi} seconds.")
     
     return filtered_spike_times
@@ -49,7 +48,7 @@ def isi_tih(spike_times, binsize=0.0004, min_interval=0.0004, neuron_id=None, bi
     isis = np.diff(spike_times)
     filtered_isis = np.diff(filtered_spike_times)
     
-    # Compute bin edges using the provided bin width.
+    # Compute bin edges using provided bin width
     bin_edges = np.arange(min(isis.min(), filtered_isis.min()), 0.1 + binsize, binsize)
     
     # Create histograms before and after filtering
@@ -72,15 +71,10 @@ def isi_tih(spike_times, binsize=0.0004, min_interval=0.0004, neuron_id=None, bi
     
     plt.tight_layout()
     
-    # Build the output directory using the provided save_folder.
-    # Ensure `save_folder` is used correctly
     output_dir = os.path.join(save_folder, "TIH", dataset_name)  # Add "TIH" subfolder if needed
     os.makedirs(output_dir, exist_ok=True)
-
     output_filename = f"{neuron_id}_filtered_comparison.png" if neuron_id is not None else "unknown_filtered_comparison.png"
     output_path = os.path.join(output_dir, output_filename)
-    
-    # Save the figure instead of showing it.
     plt.savefig(output_path, dpi=300, bbox_inches='tight')
     plt.close()
     
@@ -107,8 +101,7 @@ def save_filtered_isi_datasets(datasets, processed_dir, raw_dir, apply_filter=Tr
             new_neuron[2] = filtered_spike_times
             filtered_neurons_data.append(new_neuron)
         
-        # Reload original data to preserve metadata
-        # Ensure dataset_name matches the actual file names
+        # Reload original data to preserve structure
         raw_filename_mapping = {
             "ctrl_rat_1": "ctrl rat 1.pkl",
             "ctrl_rat_2": "ctrl rat 2.pkl",
@@ -118,12 +111,8 @@ def save_filtered_isi_datasets(datasets, processed_dir, raw_dir, apply_filter=Tr
 
         # Use the correct filename based on mapping
         original_file = os.path.join(raw_dir, raw_filename_mapping[dataset_name])
-
-        
         data, _, _ = load_dataset(original_file)
         data["neurons"] = filtered_neurons_data
-        
-        # Save the updated dataset with ISI-filtered spikes
         output_filename = dataset_name + "_ISIfiltered.pkl"
         output_path = os.path.join(processed_dir, output_filename)
         with open(output_path, "wb") as f:

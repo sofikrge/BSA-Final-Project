@@ -392,7 +392,6 @@ for dataset_name, (neurons, non_stimuli_time) in tqdm(final_filtered_datasets.it
     psth_data_map[dataset_name] = psth_data  # Store precomputed PSTH data
 
 print("Raster plots and smoothed PSTHs have been saved.")
-print("Analysis completed! Thanks for your patience :)")
 
 # %%
 # Define base directory for raster figures
@@ -426,3 +425,5 @@ for dataset_name, (neurons, non_stimuli_time) in final_filtered_datasets.items()
 print("All 2x2 PSTH plots have been saved successfully!")
 
 # %%
+
+print("Analysis completed! Thanks a bunch for your patience :)")

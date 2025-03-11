@@ -134,7 +134,7 @@ Notes on process
 - thought about noise, distant neurons affecting the recording etc. 
 Our final criteria:
 - for autocorrelograms: if either center bin exceeds global_threshold (mean + 2 stds of all correlogram center bins), or if the global peak is immediately outside the center bins.
-- for cross-correlograms: if both center bins are the minima for the correlogram
+- for cross-correlograms: if either center bins are the minima for the correlogram
     
 Bin sizes & time-related decisions
 - We chose 0.0004s for all datasets because of our exclusion criteria 

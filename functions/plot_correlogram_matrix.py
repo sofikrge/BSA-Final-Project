@@ -6,32 +6,33 @@ from matplotlib import patches as mpatches
 from matplotlib.lines import Line2D
 from tqdm.auto import tqdm
 from joblib import Parallel, delayed
-import sys
 
 """
-Definition of problematic correlograms:
-- For autocorrelograms: if either center bin exceeds global_threshold (mean + 2 stds of all correlogram center bins), or if the global peak is immediately outside the center bins.
-- For cross-correlograms: if both center bins are the minima for the correlogram.
+This script generates a correlogram matrix for a given dataset of neurons. The correlogram matrix is a grid of
+subplots where each subplot is a correlogram between two neurons.
+Thus, the autocorrelogram is plotted in the diagonal.
+
+Highlights:
+- we wrote it such that we only compute the lower triangle and mirror it then to save time
+- used joblib to have parallel computation
 """
 
+# Helper function to compute a single correlogram
 def compute_correlogram(i, j, prefiltered_spikes, binsize, limit):
-    # Use prefiltered spike times.
     t1 = prefiltered_spikes[i]
     t2 = prefiltered_spikes[j]
     is_auto = (i == j)
     counts, bins = correlogram(t1, t2=t2, binsize=binsize, limit=limit, auto=is_auto)
-    # Trim counts if necessary.
-    if len(counts) > len(bins) - 1:
+    if len(counts) > len(bins) - 1: # no of elements might mismatch, so the code trims off last count to match
         counts = counts[:-1]
     return (i, j, counts, bins)
 
+# Main function to plot the correlogram matrix
 def plot_correlogram_matrix(neurons_data, binsize, dataset_name, limit=0.02, time_window=None, save_folder=None, store_data=True):
     num_neurons = len(neurons_data)
     num_bins = int(2 * limit / binsize)
-    common_bins = np.linspace(-limit, limit, num_bins + 1)
-    common_bin_centers = (common_bins[:-1] + common_bins[1:]) / 2
 
-    # Precompute center bin indices (same for every correlogram)
+    # Compute center bin indices
     if num_bins % 2 == 0:
         center_left = num_bins // 2 - 1
         center_right = num_bins // 2
@@ -40,31 +41,30 @@ def plot_correlogram_matrix(neurons_data, binsize, dataset_name, limit=0.02, tim
 
     problematic_neuron_indices = set()
 
-    # Pre-filter spike times once per neuron.
+    # Pre-filter spike times once per neuron according to time window
     prefiltered_spikes = []
     for neuron in neurons_data:
-        spikes = neuron[:3][2]  # Extract spike times
+        spikes = neuron[:3][2]
         if time_window is not None:
             spikes = spikes[(spikes >= time_window[0]) & (spikes <= time_window[1])]
         prefiltered_spikes.append(spikes)
 
-    # List of pairs to process (i >= j)
+    # List of pairs to process, only compute lower triangle including the diagnoal
     tasks = [(i, j) for i in range(num_neurons) for j in range(i+1)]
 
-    # First pass: Compute all correlograms in parallel using joblib
+    # Compute all correlograms in parallel with joblib
     results = Parallel(n_jobs=-1)(
         delayed(compute_correlogram)(i, j, prefiltered_spikes, binsize, limit)
         for i, j in tqdm(tasks, desc="Computing correlogram", ncols=100)
     )
 
-    # Allocate data structures.
+    # Organise results
     grid_data = [[None] * num_neurons for _ in range(num_neurons)]
-    all_center_vals = []  # To compute global threshold
+    all_center_vals = []  # to compute global threshold later on
     correlogram_data = {} if store_data else None
 
-    # Process parallel results.
+    # Loop through results and store data
     for i, j, counts, bins in results:
-        # Compute bin centers.
         bin_centers = (bins[:-1] + bins[1:]) / 2
         grid_data[i][j] = {
             "counts": counts,
@@ -73,20 +73,18 @@ def plot_correlogram_matrix(neurons_data, binsize, dataset_name, limit=0.02, tim
             "center_left": center_left,
             "center_right": center_right
         }
-        # Save data if desired.
-        if store_data:
+        if store_data: # save data (optional)
             key = f"Neuron {i+1}" if i == j else f"Neuron {i+1} vs Neuron {j+1}"
             correlogram_data[key] = {"counts": counts, "bins": bins}
-        # For autocorrelograms, collect center bin values.
-        if i == j:
+        if i == j:  # For autocorrelograms: collect center bin values
             all_center_vals.append(counts[center_left])
             all_center_vals.append(counts[center_right])
 
-    # Compute the global threshold: mean of all center bin values plus two standard deviations.
+    # Compute the global threshold: mean of all center bin values plus two standard deviations
     all_center_vals = np.array(all_center_vals)
     global_threshold = all_center_vals.mean() + 2 * all_center_vals.std()
 
-    # Create subplot grid.
+    # Create matrix plot grid
     fig, axes = plt.subplots(num_neurons, num_neurons, figsize=(num_neurons * 3, num_neurons * 3))
 
     # Second pass: Plot each correlogram.

@@ -2,6 +2,7 @@ import numpy as np
 
 def correlogram(t1, t2=None, binsize=.0004, limit=.02, auto=False, normalize=True):
     """
+    Computes correlogram
     
     We chose a difference based approach bc the convolution approach required creating huge vectors consisting of 0s and 1s
     and that took up way too much memory such that we were not able to do it with our laptops

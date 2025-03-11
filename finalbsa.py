@@ -13,6 +13,7 @@ All TODO s
     - RASTERPLOTS LOOK WEIRD
     - check all figures carefully
     - why did we calc the cv of the isis and not the cv in general
+    - check saving folders again!
 """
 """
 Class notes on metrics:
@@ -273,7 +274,7 @@ for name, filename in final_filtered_files.items():
     data, neurons, non_stimuli_time = load_dataset(file_path) 
     final_filtered_datasets[name] = (neurons, non_stimuli_time)
 
-# Firing rates
+#%% Firing rates
 os.makedirs(save_folder, exist_ok=True)
 analyze_firing_rates(final_filtered_datasets, final_filtered_files, processed_dir, save_folder)
 print("Firing Rates have been plotted and saved.")
@@ -322,9 +323,10 @@ print("\nAll Survivor Functions have been plotted and saved.")
 =================================================================================================================================================================================
 """
 """
+
 1. Rasterplots + smoothed PSTH
-2. 2x2 bar plots PSTHs + dataset summaries, with baseline subtraction = Y-Axis shows the diff btw baseline and evoked response
-3. TODO Ask Denise: Cross-correlograms Pre & Post CTA
+2. 2x2 bar plots PSTHs + dataset summaries, with baseline subtraction and moving average filter = Y-Axis shows the diff btw baseline and evoked response
+
 """
 
 # 1. Rasterplots + smoothed PSTH
@@ -358,7 +360,7 @@ for dataset_name, (neurons, non_stimuli_time) in tqdm(final_filtered_datasets.it
 
 print("\nAll Raster Plots and Smoothed PSTHs have been saved.")
 
-# 2. 2x2 bar plots PSTHs + dataset summaries
+#%% 2. 2x2 bar plots PSTHs + dataset summaries
 raster_figures_dir = os.path.join(base_dir, "reports", "figures", "PSTH_TwoByTwo")
 os.makedirs(raster_figures_dir, exist_ok=True)
 
@@ -383,6 +385,4 @@ for dataset_name, (neurons, non_stimuli_time) in final_filtered_datasets.items()
     )
 
 print("\nAll 2x2 PSTH plots have been saved successfully!")
-#%% 3. Cross-correlograms Pre & Post CTA
-#%% YAY, we're done!
 print("\nAnalysis completed! Thanks a bunch for your patience :)")

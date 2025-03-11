@@ -4,14 +4,13 @@ import matplotlib.pyplot as plt
 
 def psth_raster(group_name, neurons, water_events, sugar_events, cta_time, save_folder="reports/figures/psth"):
     """
-    Generates and saves a single figure showing both pre-CTA and post-CTA rasters and PSTH overlays side by side.
-    (See original docstring for details.)
+    Generates and saves a single figure showing both pre-CTA and post-CTA raster plots and PSTH overlays side by side
     """
-    # Define the PSTH figures directory and ensure it exists.
+    
     figures_dir = os.path.join("reports", "figures", "Rasterplot_SmoothedPSTH")
     os.makedirs(figures_dir, exist_ok=True)
     
-    # Split events into pre and post CTA.
+    # Split events into pre and post CTA
     if cta_time is not None:
         water_pre = water_events[water_events < cta_time]
         sugar_pre = sugar_events[sugar_events < cta_time]
@@ -23,35 +22,33 @@ def psth_raster(group_name, neurons, water_events, sugar_events, cta_time, save_
         water_post = np.array([])
         sugar_post = np.array([])
     
-    # Parameters for plotting.
+    # Parameters for plotting
     window = (-0.5, 2.0)
     bin_width = 0.05
 
-    # Helper functions
+    # Helper functions to get raster ifno
     def gather_raster_data(events):
-        # Instead of nested loops, using  list comprehension
-        return [
-            (np.array(neuron[2]) - event, neuron_idx)
-            for neuron_idx, neuron in enumerate(neurons)
-            for event in events
-            if window[0] <= (np.array(neuron[2]) - event).min() <= window[1]  # quick check; adjust if needed
-        ]
-    
-    def moving_average(data, window_size=3):
-        kernel = np.ones(window_size) / window_size
+        raster_data = []
+        for neuron_idx, neuron in enumerate(neurons):
+            spike_times = np.array(neuron[2])
+            for event in events:
+                rel_times = spike_times - event # Compute all relative times
+                rel_times_in_window = rel_times[(rel_times >= window[0]) & (rel_times <= window[1])] # Filter to keep only those in the window
+                if len(rel_times_in_window) > 0: # If there's at least one spike in the window, record it
+                    raster_data.append((rel_times_in_window, neuron_idx))
+        return raster_data
+
+    def moving_average(data, window_size=3): # 3, so one before and one after
+        kernel = np.ones(window_size) / window_size # 1D convolution kernel
         return np.convolve(data, kernel, mode='same') # as we want the resulting array to have the same size as the input
     
     def compute_psth(events, apply_smoothing=True):
         bins = np.arange(window[0], window[1] + bin_width, bin_width)
-        # Use a list comprehension and np.concatenate to vectorize the collection of relative spike times.
-        # For each neuron, subtract all event times in one go.
-        all_rel_spikes = []
+        all_rel_spikes = [] # collect relative spikes
         for neuron in neurons:
             spikes = np.array(neuron[2])
-            # Use broadcasting: subtract all events at once.
-            rel = spikes[:, None] - events  # shape: (n_spikes, n_events)
-            rel = rel.ravel()  # flatten all differences
-            # Use vectorized filtering.
+            rel = spikes[:, None] - events # subtract all its spikes via broadcasting
+            rel = rel.ravel()
             all_rel_spikes.append(rel[(rel >= window[0]) & (rel <= window[1])])
         if all_rel_spikes:
             all_spikes = np.concatenate(all_rel_spikes)
@@ -67,8 +64,6 @@ def psth_raster(group_name, neurons, water_events, sugar_events, cta_time, save_
         bin_centers = 0.5 * (edges[:-1] + edges[1:])
         return bin_centers, psth
 
-    
-
     # Compute PSTHs and store results
     psth_results = {}
     psth_results["bin_centers_water_pre"], psth_results["psth_water_pre"] = compute_psth(water_pre)
@@ -76,15 +71,15 @@ def psth_raster(group_name, neurons, water_events, sugar_events, cta_time, save_
     psth_results["bin_centers_water_post"], psth_results["psth_water_post"] = compute_psth(water_post)
     psth_results["bin_centers_sugar_post"], psth_results["psth_sugar_post"] = compute_psth(sugar_post)
     
-    # --- Plotting ---
+    # Plot
     fig, axs = plt.subplots(3, 2, figsize=(16, 12), sharex=True)
     fig.suptitle(f"{group_name} Group - PSTH & Raster (Pre vs Post CTA)", fontsize=16)
     
-    # Pre-CTA plots.
+    # Pre-CTA
     raster_water_pre = gather_raster_data(water_pre)
     raster_sugar_pre = gather_raster_data(sugar_pre)
     
-    # Top: Water Raster.
+    # Top: Water Raster
     ax0 = axs[0, 0]
     for spike_times, neuron_idx in raster_water_pre:
         ax0.plot(spike_times, np.full_like(spike_times, neuron_idx),
@@ -96,7 +91,7 @@ def psth_raster(group_name, neurons, water_events, sugar_events, cta_time, save_
     ax0.set_ylim(-1, len(neurons))
     ax0.invert_yaxis()
     
-    # Middle: Sugar Raster.
+    # Middle: Sugar Raster
     ax1 = axs[1, 0]
     for spike_times, neuron_idx in raster_sugar_pre:
         ax1.plot(spike_times, np.full_like(spike_times, neuron_idx),
@@ -108,7 +103,7 @@ def psth_raster(group_name, neurons, water_events, sugar_events, cta_time, save_
     ax1.set_ylim(-1, len(neurons))
     ax1.invert_yaxis()
     
-    # Bottom: PSTH Overlay.
+    # Bottom: PSTH Overlay
     ax2 = axs[2, 0]
     ax2.plot(psth_results["bin_centers_water_pre"], psth_results["psth_water_pre"], color='#A2D5F2', label='Water')
     ax2.plot(psth_results["bin_centers_sugar_pre"], psth_results["psth_sugar_pre"], color='#F6A9A9', label='Sugar')
@@ -119,11 +114,11 @@ def psth_raster(group_name, neurons, water_events, sugar_events, cta_time, save_
     ax2.set_xlim(window)
     ax2.legend()
     
-    # Post-CTA plots.
+    # Post-CTA plots
     raster_water_post = gather_raster_data(water_post)
     raster_sugar_post = gather_raster_data(sugar_post)
     
-    # Top: Water Raster.
+    # Top: Water Raster
     ax3 = axs[0, 1]
     for spike_times, neuron_idx in raster_water_post:
         ax3.plot(spike_times, np.full_like(spike_times, neuron_idx),
@@ -134,7 +129,7 @@ def psth_raster(group_name, neurons, water_events, sugar_events, cta_time, save_
     ax3.set_ylim(-1, len(neurons))
     ax3.invert_yaxis()
     
-    # Middle: Sugar Raster.
+    # Middle: Sugar Raster
     ax4 = axs[1, 1]
     for spike_times, neuron_idx in raster_sugar_post:
         ax4.plot(spike_times, np.full_like(spike_times, neuron_idx),
@@ -145,7 +140,7 @@ def psth_raster(group_name, neurons, water_events, sugar_events, cta_time, save_
     ax4.set_ylim(-1, len(neurons))
     ax4.invert_yaxis()
     
-    # Bottom: PSTH Overlay.
+    # Bottom: PSTH Overlay
     ax5 = axs[2, 1]
     ax5.plot(psth_results["bin_centers_water_post"], psth_results["psth_water_post"], color='#A2D5F2', label='Water')
     ax5.plot(psth_results["bin_centers_sugar_post"], psth_results["psth_sugar_post"], color='#F6A9A9', label='Sugar')
@@ -156,7 +151,7 @@ def psth_raster(group_name, neurons, water_events, sugar_events, cta_time, save_
     ax5.set_xlim(window)
     ax5.legend()
     
-    # Uniform y-axis scaling for PSTH overlays.
+    # Uniform y-axis scaling for PSTH overlays
     pre_max = max(np.nanmax(psth_results["psth_water_pre"]) if psth_results["psth_water_pre"].size > 0 else 0,
                   np.nanmax(psth_results["psth_sugar_pre"]) if psth_results["psth_sugar_pre"].size > 0 else 0)
     post_max = max(np.nanmax(psth_results["psth_water_post"]) if psth_results["psth_water_post"].size > 0 else 0,

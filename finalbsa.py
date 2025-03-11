@@ -6,11 +6,11 @@ BSA Final Assignment - Denise Jaeschke & Sofia Karageorgiou
 """
 """
 TODO
-- how did we define the timestamps?
-- when do we want to look at which time window? 
-- compare our calculations with what was done in tirgulim to be on the safe side
-- do we want firing rates over the entire time window or just the mean?
-- psth & survivor hazard are saving to the wrong folder
+    - how did we define the timestamps?
+    - when do we want to look at which time window? 
+    - compare our calculations with what was done in tirgulim to be on the safe side
+    - do we want firing rates over the entire time window or just the mean?
+    - psth & survivor hazard are saving to the wrong folder
 
 To compare at the end:
 - subtract baseline non-stimulus firing rate from evoked responses to see how much they change -> 2 plots: control water and sugar + experimental water and sugar
@@ -32,40 +32,40 @@ Chats notes on that:
    - When subtracting baseline from evoked responses, ensure you're aligning the time windows correctly.  
    - For the correlation analysis, you might want to compute the metric per neuron in each time window and then use a scatter plot (or a correlation matrix/heatmap) to compare the values.
    - It's also useful to check the overall distribution of these metrics to see if any neurons are outliers and how that might affect your statistical tests.
+"""
+"""
+Class notes on metrics:
+    - Mean spiking rate
+    - Variance
+    - Coefficient of Variation (CV)
+        1 for Poisson, because both mean and variance = lambda (rate parameter of process so average number of events in a given time interval)
+        Shows how random vs regular activity
+        When >1 then neurons are bursty, variability higher than expected
+        When <1 usually dealing with regular neurons 
+    - Fano Factor
+        F >1 indicates overdispersion so larger variance than mean, could be clustering or correlation among events
+        F<1 underdispersion, more regular or uniform distribution of events than what a Poisson assumes
+        If Fano factor approaches Cv^2 over long time intervals, it means that the next spike depends on the previous one
+    - ISI
+        What is the chance for a spike t seconds after the previous
+    - TIH
+        Histogram of time difference between adjacent spikes (so of ISI)
+    - Survivor function
+        probability neuron stays quiet for time t after previous spike, initial value is 1 and decreases to 0 as t approaches infinity 
+    - Hazard function
+        independent probability to fire at any single point
+        mainly used to detect burst activity and refractory period
+        focuses on risk of an event happening regardless of history
+        basically rate at which survivor function decays
+        => we decided not to look into bc we do not a lot of neurons to begin with, might get very noisy at the end because there are only few neurons that spike with such long ISI
 
-Old notes
-Descriptive metrics:
-- Mean spiking rate
-- Variance
-- Coefficient of Variation (CV)
-    1 for Poisson, because both mean and variance = lambda (rate parameter of process so average number of events in a given time interval)
-    Shows how random vs regular activity
-    When >1 then neurons are bursty, variability higher than expected
-    When <1 usually dealing with regular neurons 
-- Fano Factor
-    F >1 indicates overdispersion so larger variance than mean, could be clustering or correlation among events
-    F<1 underdispersion, more regular or uniform distribution of events than what a Poisson assumes
-    If Fano factor approaches Cv^2 over long time intervals, it means that the next spike depends on the previous one
-- ISI
-    What is the chance for a spike t seconds after the previous
-- TIH
-    Histogram of time difference between adjacent spikes (so of ISI)
-- Survivor function
-    probability neuron stays quiet for time t after previous spike, initial value is 1 and decreases to 0 as t approaches infinity 
-- Hazard function
-    independent probability to fire at any single point
-    mainly used to detect burst activity and refractory period
-    focuses on risk of an event happening regardless of history
-    basically rate at which survivor function decays
-    => we decided not to look into bc we do not a lot of neurons to begin with, might get very noisy at the end because there are only few neurons that spike with such long ISI
-
-Gameplan for exclusion
-- only look at unstimulated phase
-- 0.5ms bin size as that is the absolute refractory period -> one spike is happening so look at 2 bins
-- no immediate peak next to absolute refractory period
-- 2ms relative refractory period -> look at 4 bins, there should be close to none as we are looking at the unstimulated 
-phase and a very strong stimulus would be needed for a new spike
-- chose a conservative criterion because our biggest enemy too high is data loss
+Initial plan for exclusion:
+    - only look at unstimulated phase
+    - 0.5ms bin size as that is the absolute refractory period -> one spike is happening so look at 2 bins
+    - no immediate peak next to absolute refractory period
+    - 2ms relative refractory period -> look at 4 bins, there should be close to none as we are looking at the unstimulated 
+    phase and a very strong stimulus would be needed for a new spike
+    - chose a conservative criterion because our biggest enemy too high is data loss
 """
 
 #%% Imports, loading data, and setting up directories
@@ -86,7 +86,7 @@ from functions.analyze_firing_rates import analyze_firing_rates
 from functions.cv_fano import analyze_variability
 from functions.apply_manual_fusion import apply_manual_fusion
 from functions.isi_tih import save_filtered_isi_datasets
-from functions.plot_survivor import plot_survivor
+from functions.plot_survivor import plot_survivor, plot_survivor_dataset_summary
 from functions.psth_rasterplot import psth_raster
 
 # Loading files and folders
@@ -297,7 +297,7 @@ for name, filename in final_filtered_files.items():
     data, neurons, non_stimuli_time = load_dataset(file_path) 
     final_filtered_datasets[name] = (neurons, non_stimuli_time)
 
-# Firing rates
+#%% Firing rates
 os.makedirs(save_folder, exist_ok=True)
 analyze_firing_rates(final_filtered_datasets, final_filtered_files, processed_dir, save_folder)
 print("Firing rates have been plotted and saved.")
@@ -306,8 +306,8 @@ print("Firing rates have been plotted and saved.")
 analyze_variability(final_filtered_datasets, processed_dir, final_filtered_files, save_folder)
 print("Fano factor and CV have been plotted and saved.")
 
-# Survivor function to check for potential burst activity
-for dataset_name, (neurons, non_stimuli_time) in final_filtered_datasets.items():
+#%% Survivor function to check for potential burst activity
+for dataset_name, (neurons, non_stimuli_time) in tqdm(final_filtered_datasets.items(), desc="Computing the survivor functions"):
     # Load the associated data to extract sacc_start and cta_time.
     data = load_dataset(os.path.join(processed_dir, final_filtered_files[dataset_name]))[0]
     sacc_start = data.get("sacc drinking session start time", 0)
@@ -319,20 +319,29 @@ for dataset_name, (neurons, non_stimuli_time) in final_filtered_datasets.items()
     # Use the dataset name as the subfolder.
     dataset_subfolder = dataset_name
     
+    metrics_list = []  # List to store results for all neurons
+
     for idx, neuron in enumerate(neurons):
         neuron_label = f"{dataset_name}_neuron{idx+1}"
         
-        plot_survivor(  # Use the new function (without hazard)
+        metrics = plot_survivor(  # Store the returned metrics
             neuron,
             non_stimuli_time=non_stimuli_time,
-            sacc_sstart=sacc_start,
+            sacc_start=sacc_start,
             cta_time=cta_time,
             dataset_max_time=dataset_max_time,
             figure_title=f"Survivor Function for {neuron_label}",
             save_folder=os.path.join(base_dir,"reports", "figures"),
-            subfolder=dataset_subfolder,  # One folder per dataset
+            subfolder=dataset_subfolder,  
             neuron_label=neuron_label
         )
+
+        metrics_list.append(metrics)  # Collect the output for summary
+
+    # Now call the summary function using the collected metrics:
+    plot_survivor_dataset_summary(
+        metrics_list, dataset_name, os.path.join(base_dir, "reports", "figures")
+    )
 
 print("Survivor functions have been plotted and saved.")
 

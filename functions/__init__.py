@@ -5,7 +5,7 @@ from .isi_tih import isi_tih, save_filtered_isi_datasets
 from .analyze_firing_rates import analyze_firing_rates
 from .cv_fano import analyze_variability
 from .apply_manual_fusion import apply_manual_fusion
-from .plot_survivor import plot_survivor
+from .plot_survivor import plot_survivor, plot_survivor_dataset_summary
 from .psth_rasterplot import psth_raster
 
 __all__ = [
@@ -19,4 +19,5 @@ __all__ = [
     "save_filtered_isi_datasets",
     "plot_survivor",
     "psth_raster",
+    "plot_survivor_dataset_summary"
 ]

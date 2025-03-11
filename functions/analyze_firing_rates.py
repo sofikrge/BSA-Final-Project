@@ -6,26 +6,26 @@ import pandas as pd
 from functions.load_dataset import load_dataset
 
 def extract_spike_times(neurons_data):
-    """Extracts spike times from neuron data."""
+    """Extracts spike times from neuron data"""
     return [np.array(neuron[2]) for neuron in neurons_data]  # Convert to NumPy array for filtering
 
 def compute_firing_rates(spike_times_list, time_window):
-    """Computes firing rates for a given time window."""
+    """Compute firing rates for a given time window"""
     start, end = time_window
     duration = end - start
     return [len(spikes[(spikes >= start) & (spikes <= end)]) / duration if duration > 0 else 0 for spikes in spike_times_list]
 
 def analyze_firing_rates(filtered_datasets, filtered_files, processed_dir, save_folder):
     """
-    Processes and analyzes firing rates across different datasets. 
-    This function creates a composite figure with two panels:
+    Processe and analyze firing rates across different datasets
+    This function creates a figure with two panels:
       - The top panel shows three subplots (one for each time window) of the individual dataset firing rates.
       - The bottom panel shows three subplots of the group-level mean firing rates per window.
     """
     firingrates_dir = os.path.join(save_folder, "Firing_Rates")
     os.makedirs(firingrates_dir, exist_ok=True)
     
-    # Lists to collect per-recording data
+    # Collect per-recording data
     recording_names = []
     non_stimuli_means = []
     pre_CTA_means = []
@@ -34,13 +34,12 @@ def analyze_firing_rates(filtered_datasets, filtered_files, processed_dir, save_
     pre_CTA_stds = []
     post_CTA_stds = []
     group_list = []
-    
-    summary_stats = []  # To store summary stats for each recording
+    summary_stats = []  # store stats for each recording
 
     # Process each dataset
     for dataset_name, (neurons_data, non_stimuli_time) in filtered_datasets.items():
         try:
-            # Extract spike times and load additional dataset info
+            # load dataset info
             spike_times_list = extract_spike_times(neurons_data)
             data = load_dataset(os.path.join(processed_dir, filtered_files[dataset_name]))[0]
             sacc_start = data.get("sacc drinking session start time", 0)
@@ -51,16 +50,15 @@ def analyze_firing_rates(filtered_datasets, filtered_files, processed_dir, save_
             pre_CTA_time = (sacc_start, cta_time)
             post_CTA_time = (cta_time + 3 * 3600, max_time)
             
-            # Compute firing rates for each window
+            # Compute firing rates
             rates_non = compute_firing_rates(spike_times_list, non_stimuli_time)
             rates_pre = compute_firing_rates(spike_times_list, pre_CTA_time)
             rates_post = compute_firing_rates(spike_times_list, post_CTA_time)
             
-            # Calculate means and standard deviations
+            # Calc means and stdv
             mean_non = np.mean(rates_non)
             mean_pre = np.mean(rates_pre)
             mean_post = np.mean(rates_post)
-            
             std_non = np.std(rates_non)
             std_pre = np.std(rates_pre)
             std_post = np.std(rates_post)
@@ -78,7 +76,7 @@ def analyze_firing_rates(filtered_datasets, filtered_files, processed_dir, save_
             post_CTA_stds.append(std_post)
             group_list.append(group)
             
-            # Store summary statistics for this recording
+            # Store summary stats per dataset
             summary_stats.append({
                 "Recording": dataset_name,
                 "Group": group,
@@ -93,7 +91,7 @@ def analyze_firing_rates(filtered_datasets, filtered_files, processed_dir, save_
         except Exception as e:
             print(f"Error processing {dataset_name}: {e}")
     
-    # Convert collected stats to DataFrame for further grouping
+    # Convert to DataFrame for further grouping
     summary_df = pd.DataFrame(summary_stats)
     
     # Group-level summary: calculate mean and std for each group (Control vs Experimental)
@@ -104,9 +102,7 @@ def analyze_firing_rates(filtered_datasets, filtered_files, processed_dir, save_
     # Create a composite figure with 2 rows and 3 columns
     fig, axes = plt.subplots(2, 3, figsize=(18, 10))
     
-    # -------------------
     # Top row: Individual recordings for each time window
-    # -------------------
     # Non-Stimuli window (top left)
     axes[0, 0].bar(recording_names, non_stimuli_means, yerr=non_stimuli_stds,
                    color='skyblue', edgecolor='k', alpha=0.7, capsize=5)
@@ -114,7 +110,6 @@ def analyze_firing_rates(filtered_datasets, filtered_files, processed_dir, save_
     axes[0, 0].set_ylabel("Firing Rate (Hz)")
     axes[0, 0].tick_params(axis='x', rotation=45)
     axes[0, 0].grid(axis='y', linestyle='--', alpha=0.6)
-    
     # Pre-CTA window (top middle)
     axes[0, 1].bar(recording_names, pre_CTA_means, yerr=pre_CTA_stds,
                    color='skyblue', edgecolor='k', alpha=0.7, capsize=5)
@@ -122,7 +117,6 @@ def analyze_firing_rates(filtered_datasets, filtered_files, processed_dir, save_
     axes[0, 1].set_ylabel("Firing Rate (Hz)")
     axes[0, 1].tick_params(axis='x', rotation=45)
     axes[0, 1].grid(axis='y', linestyle='--', alpha=0.6)
-    
     # Post-CTA window (top right)
     axes[0, 2].bar(recording_names, post_CTA_means, yerr=post_CTA_stds,
                    color='skyblue', edgecolor='k', alpha=0.7, capsize=5)
@@ -131,11 +125,8 @@ def analyze_firing_rates(filtered_datasets, filtered_files, processed_dir, save_
     axes[0, 2].tick_params(axis='x', rotation=45)
     axes[0, 2].grid(axis='y', linestyle='--', alpha=0.6)
     
-    # -------------------
     # Bottom row: Group-level summary for each time window
-    # -------------------
     groups = ["Control", "Experimental"]
-    
     # Non-Stimuli window group summary (bottom left)
     non_means = [group_summary.loc[g, "Non-Stimuli Mean"] if g in group_summary.index else 0 for g in groups]
     non_err = [group_std.loc[g, "Non-Stimuli Std"] if g in group_std.index else 0 for g in groups]
@@ -144,7 +135,6 @@ def analyze_firing_rates(filtered_datasets, filtered_files, processed_dir, save_
     axes[1, 0].set_title("Non-Stimuli Firing Rates (Group)")
     axes[1, 0].set_ylabel("Firing Rate (Hz)")
     axes[1, 0].grid(axis='y', linestyle='--', alpha=0.6)
-    
     # Pre-CTA window group summary (bottom middle)
     pre_means = [group_summary.loc[g, "Pre-CTA Mean"] if g in group_summary.index else 0 for g in groups]
     pre_err = [group_std.loc[g, "Pre-CTA Std"] if g in group_std.index else 0 for g in groups]
@@ -153,7 +143,6 @@ def analyze_firing_rates(filtered_datasets, filtered_files, processed_dir, save_
     axes[1, 1].set_title("Pre-CTA Firing Rates (Group)")
     axes[1, 1].set_ylabel("Firing Rate (Hz)")
     axes[1, 1].grid(axis='y', linestyle='--', alpha=0.6)
-    
     # Post-CTA window group summary (bottom right)
     post_means = [group_summary.loc[g, "Post-CTA Mean"] if g in group_summary.index else 0 for g in groups]
     post_err = [group_std.loc[g, "Post-CTA Std"] if g in group_std.index else 0 for g in groups]
@@ -163,24 +152,18 @@ def analyze_firing_rates(filtered_datasets, filtered_files, processed_dir, save_
     axes[1, 2].set_ylabel("Firing Rate (Hz)")
     axes[1, 2].grid(axis='y', linestyle='--', alpha=0.6)
     
-    # Compute global maximum for file-level plots
+    # Determine overall maximum y-axis value & set limit
     global_max_individual = max(
         max([x + y for x, y in zip(non_stimuli_means, non_stimuli_stds)]),
         max([x + y for x, y in zip(pre_CTA_means, pre_CTA_stds)]),
         max([x + y for x, y in zip(post_CTA_means, post_CTA_stds)])
     )
-
-    # Compute global maximum for group-level plots
     global_max_group = max(
         max([x + y for x, y in zip(non_means, non_err)]),
         max([x + y for x, y in zip(pre_means, pre_err)]),
         max([x + y for x, y in zip(post_means, post_err)])
     )
-
-    # Determine the overall maximum y-axis value
     global_ymax = max(global_max_individual, global_max_group)
-
-    # Set the same y-axis limit for every subplot
     for ax in axes.flatten():
         ax.set_ylim(0, global_ymax)
     
@@ -192,7 +175,7 @@ def analyze_firing_rates(filtered_datasets, filtered_files, processed_dir, save_
     plt.savefig(composite_filename, dpi=150, bbox_inches="tight")
     plt.close()
     
-    # Optional: Print the summary stats for debugging
+    # Print the summary stats for debugging
     print("Final summary of firing rates:")
     print(summary_df.head())
     print("\nGroup-level summary of firing rates (Control vs Experimental):")

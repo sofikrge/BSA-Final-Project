@@ -5,10 +5,12 @@ BSA Final Assignment - Denise Jaeschke & Sofia Karageorgiou
 =================================================================================================================================================================================
 """
 """
-TODO
+All TODO s
     - double-check how did we define the timestamps?
     - when do we want to look at which time window? 
     - compare our calculations with what was done in tirgulim to be on the safe side
+    - try out code on a windows computer
+    - RASTERPLOTS LOOK WEIRD
 """
 """
 Class notes on metrics:
@@ -192,23 +194,22 @@ mentioned fitlering out spikes occurring in the absolute refractory period
 so we tried it out compared the distributions.
 
 Note: 
-    We went with both, the correlogram and the ISI check because 
+    We went with both, the correlogram and the ISI filtering because 
     the correlogram gives us a better sense of firing patters as 
-    it is not just about consecutive spikes
+    it is not just about consecutive spikes, while the ISI focuses on the latter.
 
 """
 
-# Define a dictionary mapping dataset names to filtered file names.
+# Dictionary mapping dataset names to filtered file names
 filteredCC_files = {"ctrl_rat_1": "ctrl_rat_1_filteredCC.pkl","ctrl_rat_2": "ctrl_rat_2_filteredCC.pkl","exp_rat_2":  "exp_rat_2_filteredCC.pkl","exp_rat_3":  "exp_rat_3_filteredCC.pkl"}
 filteredCC_datasets = {
     name: (datasets[name]["neurons"], datasets[name]["non_stimuli_time"])
     for name in filteredCC_files.keys()
 }
 
-# Set this flag to enable or disable filtering
+# Toggle filtering on or off
 apply_filtering = True
 
-# Plot ISI histograms for all neurons
 for dataset_name, (neurons_data, non_stimuli_time) in filteredCC_datasets.items():
     print(f"Creating TIHs for filtered dataset: {dataset_name}")
     
@@ -271,7 +272,7 @@ for name, filename in final_filtered_files.items():
     data, neurons, non_stimuli_time = load_dataset(file_path) 
     final_filtered_datasets[name] = (neurons, non_stimuli_time)
 
-#%% Firing rates
+# Firing rates
 os.makedirs(save_folder, exist_ok=True)
 analyze_firing_rates(final_filtered_datasets, final_filtered_files, processed_dir, save_folder)
 print("Firing Rates have been plotted and saved.")
@@ -280,24 +281,19 @@ print("Firing Rates have been plotted and saved.")
 analyze_variability(final_filtered_datasets, processed_dir, final_filtered_files, save_folder)
 print("Fano Factor and CV have been plotted and saved.")
 
-#% Survivor function to check for potential burst activity
+# Survivor function to check for potential burst activity
 for dataset_name, (neurons, non_stimuli_time) in tqdm(final_filtered_datasets.items(), desc="Computing the Survivor Functions"):
-    # Load the associated data to extract sacc_start and cta_time.
-    data = load_dataset(os.path.join(processed_dir, final_filtered_files[dataset_name]))[0]
+    
+    data = load_dataset(os.path.join(processed_dir, final_filtered_files[dataset_name]))[0] # load data & extract time stmaps
     sacc_start = data.get("sacc drinking session start time", 0)
     cta_time = data.get("CTA injection time", 0)
-    
-    # Compute the maximum spike time across all neurons for the Post-CTA window.
-    dataset_max_time = max((np.max(neuron[2]) for neuron in neurons if len(neuron[2]) > 0), default=0)
-    
-    # Use the dataset name as the subfolder.
-    dataset_subfolder = dataset_name
-    
-    metrics_list = []  # List to store results for all neurons
+
+    dataset_max_time = max((np.max(neuron[2]) for neuron in neurons if len(neuron[2]) > 0), default=0) # compute max spike time
+    dataset_subfolder = dataset_name # set dataset as subfolder
+    metrics_list = []  # list to store results for all neurons
 
     for idx, neuron in enumerate(neurons):
         neuron_label = f"{dataset_name}_neuron{idx+1}"
-        
         metrics = plot_survivor(  # Store the returned metrics
             neuron,
             non_stimuli_time=non_stimuli_time,
@@ -309,10 +305,9 @@ for dataset_name, (neurons, non_stimuli_time) in tqdm(final_filtered_datasets.it
             subfolder=dataset_subfolder,  
             neuron_label=neuron_label
         )
-
         metrics_list.append(metrics)  # Collect the output for summary
 
-    # Now call the summary function using the collected metrics:
+    # Summary function using the collected metrics
     plot_survivor_dataset_summary(
         metrics_list, dataset_name, os.path.join(base_dir, "reports", "figures")
     )

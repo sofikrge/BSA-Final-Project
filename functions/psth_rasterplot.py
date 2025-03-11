@@ -27,10 +27,9 @@ def psth_raster(group_name, neurons, water_events, sugar_events, cta_time, save_
     window = (-0.5, 2.0)
     bin_width = 0.05
 
-    # --- Optimized helper functions ---
+    # Helper functions
     def gather_raster_data(events):
-        # Instead of nested loops in Python, use a list comprehension.
-        # Note: Each neuron's spike array length may vary.
+        # Instead of nested loops, using  list comprehension
         return [
             (np.array(neuron[2]) - event, neuron_idx)
             for neuron_idx, neuron in enumerate(neurons)
@@ -40,7 +39,7 @@ def psth_raster(group_name, neurons, water_events, sugar_events, cta_time, save_
     
     def moving_average(data, window_size=3):
         kernel = np.ones(window_size) / window_size
-        return np.convolve(data, kernel, mode='same')
+        return np.convolve(data, kernel, mode='same') # as we want the resulting array to have the same size as the input
     
     def compute_psth(events, apply_smoothing=True):
         bins = np.arange(window[0], window[1] + bin_width, bin_width)
@@ -67,6 +66,8 @@ def psth_raster(group_name, neurons, water_events, sugar_events, cta_time, save_
             psth = moving_average(psth, window_size=3)
         bin_centers = 0.5 * (edges[:-1] + edges[1:])
         return bin_centers, psth
+
+    
 
     # Compute PSTHs and store results
     psth_results = {}

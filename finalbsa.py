@@ -11,6 +11,7 @@ TODO
     - compare our calculations with what was done in tirgulim to be on the safe side
     - do we want firing rates over the entire time window or just the mean?
     - psth & survivor hazard are saving to the wrong folder
+    - our correlogram calculations are different than those in class
 
 To compare at the end:
 - subtract baseline non-stimulus firing rate from evoked responses to see how much they change -> 2 plots: control water and sugar + experimental water and sugar
@@ -131,7 +132,7 @@ dataset_name = "ctrl_rat_1"
 data = datasets[dataset_name]["data"]
 neurons = datasets[dataset_name]["neurons"]
 
-print(f"\nDataset: {dataset_name}")
+print(f"Dataset: {dataset_name}")
 print("Type:", type(data)) 
 print("Keys:", data.keys())
 
@@ -180,7 +181,7 @@ Definition of problematic correlograms:
 for dataset_name, dataset in datasets.items():
     neurons_data = dataset["neurons"]
     time_window = dataset["non_stimuli_time"] # because we we want to see a clearer relative refrac period as well
-    print(f"\nProcessing correlogram for dataset: {dataset_name}. Please be patient, this will take a while.")
+    print(f"\nProcessing Correlogram for Dataset: {dataset_name}. Please be patient, this might take a while.")
     
     # Plot and store correlogram data for this dataset
     correlogram_data = plot_correlogram_matrix(neurons_data=neurons_data,binsize=binsizes[dataset_name],dataset_name=dataset_name,time_window=time_window,save_folder=os.path.join(save_folder, "Correlograms"),store_data=True)
@@ -236,7 +237,7 @@ apply_filtering = True  # Change to False if you want raw ISI histograms without
 
 # Loop over each filtered dataset and plot ISI histograms for all neurons.
 for dataset_name, (neurons_data, non_stimuli_time) in filteredCC_datasets.items():
-    print(f"\nProcessing ISI histograms for filtered dataset: {dataset_name}")
+    print(f"\Creating TIHs for filtered dataset: {dataset_name}")
     
     # Process each neuron in the filtered dataset.
     for idx, neuron in enumerate(neurons_data):
@@ -261,18 +262,19 @@ save_filtered_isi_datasets(
     raw_dir,
     apply_filter=apply_filtering
 )
-print("ISI histograms have been plotted and ISI-filtered datasets have been saved.")
+print("TIHs have been plotted and ISI-filtered datasets have been saved.")
 
 """
-This check showed us that based on our criterion: 
+Checking the debug prints showed us that based on our criterion: 
 - Filtered dataset ctrl_rat_1: 20 out of 23 neurons problematic
 - Filtered dataset ctrl_rat_2: 2 out of 2 neurons are problematic.
 - Filtered dataset exp_rat_2: 13 out of 13 neurons are problematic.
 - Filtered dataset exp_rat_3: 11 out of 19 neurons are problematic.
 
 That would force us to remove a lot of neurons. 
-We were thinking about removing spikes that are too close to each other, 
-but we decided to keep them for now as we did not find this mentioned in similar studies. 
+So we decided to keep the neurons but remove biologically impossible spikes.
+For this we had to make some arbitrary decision unfortunately. 
+We decided to keep the first spike and remove all spikes that are too close to the first spike.
 """
 
 # %%
@@ -300,14 +302,14 @@ for name, filename in final_filtered_files.items():
 #%% Firing rates
 os.makedirs(save_folder, exist_ok=True)
 analyze_firing_rates(final_filtered_datasets, final_filtered_files, processed_dir, save_folder)
-print("Firing rates have been plotted and saved.")
+print("Firing Rates have been plotted and saved.")
 
 # Fano factor and CV
 analyze_variability(final_filtered_datasets, processed_dir, final_filtered_files, save_folder)
-print("Fano factor and CV have been plotted and saved.")
+print("Fano Factor and CV have been plotted and saved.")
 
 #%% Survivor function to check for potential burst activity
-for dataset_name, (neurons, non_stimuli_time) in tqdm(final_filtered_datasets.items(), desc="Computing the survivor functions"):
+for dataset_name, (neurons, non_stimuli_time) in tqdm(final_filtered_datasets.items(), desc="Computing the Survivor Functions"):
     # Load the associated data to extract sacc_start and cta_time.
     data = load_dataset(os.path.join(processed_dir, final_filtered_files[dataset_name]))[0]
     sacc_start = data.get("sacc drinking session start time", 0)
@@ -354,8 +356,6 @@ print("Survivor functions have been plotted and saved.")
 """
 PSTH
 """
-
-# 1. PSTH
 
 # Ensure the PSTH figures folder is inside the correct project directory
 psthfigures_dir = os.path.join(base_dir, "reports", "figures", "psth")

@@ -96,7 +96,6 @@ binsizes = {key: 0.0004 for key in datasets.keys()}
 Preliminary steps: Understanding our dataset
 =================================================================================================================================================================================
 """
-
 """
 # Chose a dataset to inspect ctrl_rat_1
 dataset_name = "ctrl_rat_1"
@@ -274,7 +273,7 @@ for name, filename in final_filtered_files.items():
     data, neurons, non_stimuli_time = load_dataset(file_path) 
     final_filtered_datasets[name] = (neurons, non_stimuli_time)
 
-#%% Firing rates
+# Firing rates
 os.makedirs(save_folder, exist_ok=True)
 analyze_firing_rates(final_filtered_datasets, final_filtered_files, processed_dir, save_folder)
 print("Firing Rates have been plotted and saved.")
@@ -360,7 +359,7 @@ for dataset_name, (neurons, non_stimuli_time) in tqdm(final_filtered_datasets.it
 
 print("\nAll Raster Plots and Smoothed PSTHs have been saved.")
 
-#%% 2. 2x2 bar plots PSTHs + dataset summaries
+# 2. 2x2 bar plots PSTHs + dataset summaries
 raster_figures_dir = os.path.join(base_dir, "reports", "figures", "PSTH_TwoByTwo")
 os.makedirs(raster_figures_dir, exist_ok=True)
 

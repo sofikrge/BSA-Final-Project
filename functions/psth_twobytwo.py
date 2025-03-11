@@ -4,22 +4,11 @@ import matplotlib.pyplot as plt
 
 def plot_neuron_rasters_2x2(group_name, neurons, water_events, sugar_events, cta_time, save_folder="reports/figures/PSTH_TwoByTwo", summary_folder="reports/figures/PSTH_TwoByTwo/Summary", window=(-1, 2), bin_width=0.05):
     """
-    Generates and saves 2×2 raster-style histogram plots per neuron.
-    Also creates a group-level summary raster plot stored in `rasters/summary/`.
-
-    Parameters:
-        group_name (str): Group name (e.g., "ctrl_rat_1").
-        neurons (list): List of neurons, each with spike times at index 2.
-        water_events (array-like): Times of water-related stimulus events.
-        sugar_events (array-like): Times of sugar-related stimulus events.
-        cta_time (float): Time of CTA injection.
-        save_folder (str): Base directory where individual neuron figures will be saved.
-        summary_folder (str): Directory where the group-level summary will be saved.
-        window (tuple): Time window (start, end) relative to each event.
-        bin_width (float): Width of time bins for histogram-like representation.
+    Creates 2x2 raster-style histogram plots per neuron + creates a group-level summary
     """
-    dataset_folder = save_folder  # Create dataset-specific folder
-    os.makedirs(dataset_folder, exist_ok=True)  # Ensure dataset folder exists
+    
+    dataset_folder = save_folder
+    os.makedirs(dataset_folder, exist_ok=True) 
     os.makedirs(summary_folder, exist_ok=True)
 
     # Define pre and post CTA event times
@@ -35,7 +24,6 @@ def plot_neuron_rasters_2x2(group_name, neurons, water_events, sugar_events, cta
     group_summary = None 
 
     def moving_average(data, window_size=3): # 3, so one before and one after
-        """Apply a simple moving average filter with a given window size."""
         kernel = np.ones(window_size) / window_size  # equal weights to adjacent bins
         return np.convolve(data, kernel, mode='same')  # same bc we want the same array size
 
@@ -45,15 +33,12 @@ def plot_neuron_rasters_2x2(group_name, neurons, water_events, sugar_events, cta
         num_bins = int((window[1] - window[0]) / bin_width)
         bins = np.linspace(window[0], window[1], num_bins + 1, endpoint=True)  # Ensure exact bin alignment
         bin_centers = bins[:-1] + (bin_width / 2)  # Ensure bin centers are correct
-
-        
         num_baseline_bins = int((baseline_window[1] - baseline_window[0]) / bin_width)  
         baseline_bins = np.linspace(baseline_window[0], baseline_window[1], num_baseline_bins + 1)
 
-
         all_spikes = []
         for event in events:
-            rel_spikes = np.array(neuron[2]) - event
+            rel_spikes = np.array(neuron[2]) - event # collect relative spike times
             rel_spikes = rel_spikes[(rel_spikes >= window[0]) & (rel_spikes <= window[1])]
             all_spikes.extend(rel_spikes)
 
@@ -61,20 +46,18 @@ def plot_neuron_rasters_2x2(group_name, neurons, water_events, sugar_events, cta
         num_events = max(len(events), 1)  # Avoid division by zero
         psth = counts / (num_events * bin_width)
 
-        # Compute baseline firing rate (mean over baseline window)
+        # Compute baseline firing rate = mean over baseline window, then subtract from PSTH
         baseline_counts, _ = np.histogram(all_spikes, bins=baseline_bins)
         baseline_rate = np.mean(baseline_counts / (num_events * bin_width))
-
-        # Subtract baseline & normalize by baseline rate
         psth_corrected = (psth - baseline_rate)
         
         # Apply smoothing (optional)
         if smooth:
             psth_corrected = moving_average(psth_corrected, window_size=3)
+            
+        return bin_centers, psth_corrected
 
-        return bin_centers, psth_corrected # minus baseline and with smoothing 
-
-    # Loop through neurons and create 2x2 raster-style histograms
+    # Loop through neurons
     for i, neuron in enumerate(neurons):
         bin_centers, hist_water_pre = compute_spike_histogram(neuron, water_pre, baseline_window=(-1, 0))
         _, hist_water_post = compute_spike_histogram(neuron, water_post, baseline_window=(-1, 0))
@@ -83,7 +66,7 @@ def plot_neuron_rasters_2x2(group_name, neurons, water_events, sugar_events, cta
 
         # Initialize group_summary only once, based on first computed PSTH size
         if group_summary is None:
-            num_bins = len(hist_water_pre)  # Automatically set correct bin size
+            num_bins = len(hist_water_pre)
             group_summary = {
                 "water_pre": np.zeros(num_bins),
                 "water_post": np.zeros(num_bins),
@@ -91,7 +74,7 @@ def plot_neuron_rasters_2x2(group_name, neurons, water_events, sugar_events, cta
                 "sugar_post": np.zeros(num_bins)
             }
 
-        # Add to group summary (efficient in-place update)
+        # Add to group summary
         group_summary["water_pre"] += hist_water_pre
         group_summary["water_post"] += hist_water_post
         group_summary["sugar_pre"] += hist_sugar_pre
@@ -130,7 +113,7 @@ def plot_neuron_rasters_2x2(group_name, neurons, water_events, sugar_events, cta
 
     print(f"Saved updated 2x2 raster-style plots for {group_name} in {dataset_folder}")
 
-    # Generate Group-Level Summary Plot
+    # Group-Level Summary Plot
     fig, axs = plt.subplots(2, 2, figsize=(10, 6), sharex=True, sharey=True)
     fig.suptitle(f"Group Summary - {group_name}", fontsize=14)
 

@@ -89,6 +89,7 @@ from functions.apply_manual_fusion import apply_manual_fusion
 from functions.isi_tih import save_filtered_isi_datasets
 from functions.plot_survivor import plot_survivor, plot_survivor_dataset_summary
 from functions.psth_rasterplot import psth_raster
+from functions.psth_twobytwo import plot_neuron_rasters_2x2
 
 # Loading files and folders
 base_dir = os.path.abspath(os.path.dirname(__file__))  # folder of this script
@@ -392,4 +393,38 @@ for dataset_name, (neurons, non_stimuli_time) in tqdm(final_filtered_datasets.it
 
 print("PSTH plots have been saved.")
 print("Analysis completed! Thanks for your patience :)")
+
+# %%
+# Define base directory for raster figures
+raster_figures_dir = os.path.join(base_dir, "reports", "figures", "rasters")
+os.makedirs(raster_figures_dir, exist_ok=True)
+
+# Loop through datasets and generate raster-style histograms
+for dataset_name, (neurons, non_stimuli_time) in final_filtered_datasets.items():
+    print(f"Generating raster-style plots for {dataset_name}...")
+
+    # Load dataset info
+    data = load_dataset(os.path.join(processed_dir, final_filtered_files[dataset_name]))[0]
+    cta_time = data.get("CTA injection time", None)
+
+    # Extract water & sugar event timestamps
+    water_events = np.array(data.get("event_times", {}).get("water", []))
+    sugar_events = np.array(data.get("event_times", {}).get("sugar", []))
+
+    # Call function, now saving in per-dataset subfolders
+    plot_neuron_rasters_2x2(
+        group_name=dataset_name,
+        neurons=neurons,
+        water_events=water_events,
+        sugar_events=sugar_events,
+        cta_time=cta_time,
+        save_folder=os.path.join(raster_figures_dir, dataset_name),  # Now saves per dataset
+        window=(-1, 2),
+        bin_width=0.05
+    )
+
+print("All updated 2x2 raster-style plots have been saved successfully!")
+
+
+
 # %%

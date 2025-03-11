@@ -7,6 +7,7 @@ from .cv_fano import analyze_variability
 from .apply_manual_fusion import apply_manual_fusion
 from .plot_survivor import plot_survivor, plot_survivor_dataset_summary
 from .psth_rasterplot import psth_raster
+from .psth_twobytwo import plot_neuron_rasters_2x2
 
 __all__ = [
     "load_dataset",
@@ -19,5 +20,6 @@ __all__ = [
     "save_filtered_isi_datasets",
     "plot_survivor",
     "psth_raster",
-    "plot_survivor_dataset_summary"
+    "plot_survivor_dataset_summary",
+    "plot_neuron_rasters_2x2"
 ]

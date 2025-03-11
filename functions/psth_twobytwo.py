@@ -34,10 +34,10 @@ def plot_neuron_rasters_2x2(group_name, neurons, water_events, sugar_events, cta
 
     group_summary = None 
 
-    def moving_average(data, window_size=3): # so one before and one after
+    def moving_average(data, window_size=3): # 3, so one before and one after
         """Apply a simple moving average filter with a given window size."""
-        kernel = np.ones(window_size) / window_size  # Equal weights
-        return np.convolve(data, kernel, mode='same')  # Keep the same array size
+        kernel = np.ones(window_size) / window_size  # equal weights to adjacent bins
+        return np.convolve(data, kernel, mode='same')  # same bc we want the same array size
 
     def compute_spike_histogram(neuron, events, window=(-1, 2), bin_width=0.05, baseline_window=(-1, 0), smooth=True):
         """Compute a histogram-like spike count across event-aligned windows with baseline subtraction."""

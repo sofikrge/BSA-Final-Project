@@ -6,10 +6,9 @@ BSA Final Assignment - Denise Jaeschke & Sofia Karageorgiou
 """
 """
 TODO
-    - how did we define the timestamps?
+    - double-check how did we define the timestamps?
     - when do we want to look at which time window? 
     - compare our calculations with what was done in tirgulim to be on the safe side
-    - our correlogram calculations are different than those in class
 
 To compare at the end:
 - subtract baseline non-stimulus firing rate from evoked responses to see how much they change -> 2 plots: control water and sugar + experimental water and sugar

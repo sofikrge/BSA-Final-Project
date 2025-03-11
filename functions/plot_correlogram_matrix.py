@@ -19,7 +19,7 @@ def compute_correlogram(i, j, prefiltered_spikes, binsize, limit):
     t1 = prefiltered_spikes[i]
     t2 = prefiltered_spikes[j]
     is_auto = (i == j)
-    counts, bins = correlogram(t1, t2=t2, binsize=binsize, limit=limit, auto=is_auto, density=False)
+    counts, bins = correlogram(t1, t2=t2, binsize=binsize, limit=limit, auto=is_auto)
     # Trim counts if necessary.
     if len(counts) > len(bins) - 1:
         counts = counts[:-1]

@@ -32,31 +32,64 @@ def plot_neuron_rasters_2x2(group_name, neurons, water_events, sugar_events, cta
         water_pre, sugar_pre = water_events, sugar_events
         water_post, sugar_post = np.array([]), np.array([])
 
-    bins = np.arange(window[0], window[1] + bin_width, bin_width)
-    group_summary = {
-        "water_pre": np.zeros(len(bins) - 1),
-        "water_post": np.zeros(len(bins) - 1),
-        "sugar_pre": np.zeros(len(bins) - 1),
-        "sugar_post": np.zeros(len(bins) - 1)
-    }
+    group_summary = None 
 
-    def compute_spike_histogram(neuron, events):
-        """Compute a histogram-like spike count across event-aligned windows."""
+    def moving_average(data, window_size=3): # so one before and one after
+        """Apply a simple moving average filter with a given window size."""
+        kernel = np.ones(window_size) / window_size  # Equal weights
+        return np.convolve(data, kernel, mode='same')  # Keep the same array size
+
+    def compute_spike_histogram(neuron, events, window=(-1, 2), bin_width=0.05, baseline_window=(-1, 0), smooth=True):
+        """Compute a histogram-like spike count across event-aligned windows with baseline subtraction."""
+        
+        num_bins = int((window[1] - window[0]) / bin_width)
+        bins = np.linspace(window[0], window[1], num_bins + 1, endpoint=True)  # Ensure exact bin alignment
+        bin_centers = bins[:-1] + (bin_width / 2)  # Ensure bin centers are correct
+
+        
+        num_baseline_bins = int((baseline_window[1] - baseline_window[0]) / bin_width)  
+        baseline_bins = np.linspace(baseline_window[0], baseline_window[1], num_baseline_bins + 1)
+
+
         all_spikes = []
         for event in events:
             rel_spikes = np.array(neuron[2]) - event
             rel_spikes = rel_spikes[(rel_spikes >= window[0]) & (rel_spikes <= window[1])]
             all_spikes.extend(rel_spikes)
-        
+
         counts, _ = np.histogram(all_spikes, bins=bins)
-        return counts / (len(events) * bin_width) if len(events) > 0 else np.zeros_like(counts)
+        num_events = max(len(events), 1)  # Avoid division by zero
+        psth = counts / (num_events * bin_width)
+
+        # Compute baseline firing rate (mean over baseline window)
+        baseline_counts, _ = np.histogram(all_spikes, bins=baseline_bins)
+        baseline_rate = np.mean(baseline_counts / (num_events * bin_width))
+
+        # Subtract baseline & normalize by baseline rate
+        psth_corrected = (psth - baseline_rate)
+        
+        # Apply smoothing (optional)
+        if smooth:
+            psth_corrected = moving_average(psth_corrected, window_size=3)
+
+        return bin_centers, psth_corrected # minus baseline and with smoothing 
 
     # Loop through neurons and create 2x2 raster-style histograms
     for i, neuron in enumerate(neurons):
-        hist_water_pre = compute_spike_histogram(neuron, water_pre)
-        hist_water_post = compute_spike_histogram(neuron, water_post)
-        hist_sugar_pre = compute_spike_histogram(neuron, sugar_pre)
-        hist_sugar_post = compute_spike_histogram(neuron, sugar_post)
+        bin_centers, hist_water_pre = compute_spike_histogram(neuron, water_pre, baseline_window=(-1, 0))
+        _, hist_water_post = compute_spike_histogram(neuron, water_post, baseline_window=(-1, 0))
+        _, hist_sugar_pre = compute_spike_histogram(neuron, sugar_pre, baseline_window=(-1, 0))
+        _, hist_sugar_post = compute_spike_histogram(neuron, sugar_post, baseline_window=(-1, 0))
+
+        # Initialize group_summary only once, based on first computed PSTH size
+        if group_summary is None:
+            num_bins = len(hist_water_pre)  # Automatically set correct bin size
+            group_summary = {
+                "water_pre": np.zeros(num_bins),
+                "water_post": np.zeros(num_bins),
+                "sugar_pre": np.zeros(num_bins),
+                "sugar_post": np.zeros(num_bins)
+            }
 
         # Add to group summary (efficient in-place update)
         group_summary["water_pre"] += hist_water_pre
@@ -69,23 +102,23 @@ def plot_neuron_rasters_2x2(group_name, neurons, water_events, sugar_events, cta
         fig.suptitle(f"Neuron {i+1} - {group_name}", fontsize=14)
 
         # Row 1 - Water Events
-        axs[0, 0].bar(bins[:-1], hist_water_pre, width=bin_width, color="blue", alpha=0.7, edgecolor="black")
+        axs[0, 0].bar(bin_centers, hist_water_pre, width=bin_width,align='center', color="blue", alpha=0.7, edgecolor="black")
         axs[0, 0].axvline(0, color="red", linestyle="--")
         axs[0, 0].set_title("Water Pre-CTA")
         axs[0, 0].set_ylabel("Firing Rate (Hz)")
 
-        axs[0, 1].bar(bins[:-1], hist_water_post, width=bin_width, color="cyan", alpha=0.7, edgecolor="black")
+        axs[0, 1].bar(bin_centers, hist_water_post, width=bin_width, align='center', color="cyan", alpha=0.7, edgecolor="black")
         axs[0, 1].axvline(0, color="red", linestyle="--")
         axs[0, 1].set_title("Water Post-CTA")
 
         # Row 2 - Sugar Events
-        axs[1, 0].bar(bins[:-1], hist_sugar_pre, width=bin_width, color="red", alpha=0.7, edgecolor="black")
+        axs[1, 0].bar(bin_centers, hist_sugar_pre, width=bin_width,align='center', color="red", alpha=0.7, edgecolor="black")
         axs[1, 0].axvline(0, color="red", linestyle="--")
         axs[1, 0].set_title("Sugar Pre-CTA")
         axs[1, 0].set_ylabel("Firing Rate (Hz)")
         axs[1, 0].set_xlabel("Time (s)")
 
-        axs[1, 1].bar(bins[:-1], hist_sugar_post, width=bin_width, color="pink", alpha=0.7, edgecolor="black")
+        axs[1, 1].bar(bin_centers, hist_sugar_post, width=bin_width,align='center', color="pink", alpha=0.7, edgecolor="black")
         axs[1, 1].axvline(0, color="red", linestyle="--")
         axs[1, 1].set_title("Sugar Post-CTA")
         axs[1, 1].set_xlabel("Time (s)")
@@ -101,20 +134,20 @@ def plot_neuron_rasters_2x2(group_name, neurons, water_events, sugar_events, cta
     fig, axs = plt.subplots(2, 2, figsize=(10, 6), sharex=True, sharey=True)
     fig.suptitle(f"Group Summary - {group_name}", fontsize=14)
 
-    axs[0, 0].bar(bins[:-1], group_summary["water_pre"] / len(neurons), width=bin_width, color="blue", alpha=0.7, edgecolor="black")
+    axs[0, 0].bar(bin_centers, group_summary["water_pre"] / len(neurons), width=bin_width,align='center', color="blue", alpha=0.7, edgecolor="black")
     axs[0, 0].axvline(0, color="red", linestyle="--")
     axs[0, 0].set_title("Water Pre-CTA")
 
-    axs[0, 1].bar(bins[:-1], group_summary["water_post"] / len(neurons), width=bin_width, color="cyan", alpha=0.7, edgecolor="black")
+    axs[0, 1].bar(bin_centers, group_summary["water_post"] / len(neurons), width=bin_width,align='center', color="cyan", alpha=0.7, edgecolor="black")
     axs[0, 1].axvline(0, color="red", linestyle="--")
     axs[0, 1].set_title("Water Post-CTA")
 
-    axs[1, 0].bar(bins[:-1], group_summary["sugar_pre"] / len(neurons), width=bin_width, color="red", alpha=0.7, edgecolor="black")
+    axs[1, 0].bar(bin_centers, group_summary["sugar_pre"] / len(neurons), width=bin_width,align='center', color="red", alpha=0.7, edgecolor="black")
     axs[1, 0].axvline(0, color="red", linestyle="--")
     axs[1, 0].set_title("Sugar Pre-CTA")
     axs[1, 0].set_xlabel("Time (s)")
 
-    axs[1, 1].bar(bins[:-1], group_summary["sugar_post"] / len(neurons), width=bin_width, color="pink", alpha=0.7, edgecolor="black")
+    axs[1, 1].bar(bin_centers, group_summary["sugar_post"] / len(neurons), width=bin_width, align='center',color="pink", alpha=0.7, edgecolor="black")
     axs[1, 1].axvline(0, color="red", linestyle="--")
     axs[1, 1].set_title("Sugar Post-CTA")
     axs[1, 1].set_xlabel("Time (s)")

@@ -93,12 +93,9 @@ from functions.psth_twobytwo import plot_neuron_rasters_2x2
 
 # Loading files and folders
 base_dir = os.path.abspath(os.path.dirname(__file__))  # folder of this script
-
 save_folder = os.path.join(base_dir, "reports", "figures")
 os.makedirs(save_folder, exist_ok=True)  # Ensure directory exists
-
 raw_dir = os.path.join(base_dir, "data", "raw")
-
 processed_dir = os.path.join(base_dir, 'data', 'processed')
 os.makedirs(processed_dir, exist_ok=True)
 
@@ -116,7 +113,7 @@ for name, path in dataset_paths.items():
     data, neurons, non_stimuli_time = load_dataset(path)
     datasets[name] = {"data": data, "neurons": neurons, "non_stimuli_time": non_stimuli_time}
 
-# Set binsize for each dataset
+# Set binsize in s for first operations
 binsizes = {key: 0.0004 for key in datasets.keys()}
 #%%
 """
@@ -178,13 +175,12 @@ Definition of problematic correlograms:
 - for cross-correlograms: if both center bins are the minima for the correlogram
 """
 
-# Loop over each dataset and compute/check the correlogram matrix.
+# Compute the correlogram matrix.
 for dataset_name, dataset in datasets.items():
     neurons_data = dataset["neurons"]
     time_window = dataset["non_stimuli_time"] # because we we want to see a clearer relative refrac period as well
     print(f"\nProcessing Correlogram for Dataset: {dataset_name}. Please be patient, this might take a while.")
     
-    # Plot and store correlogram data for this dataset
     correlogram_data = plot_correlogram_matrix(neurons_data=neurons_data,binsize=binsizes[dataset_name],dataset_name=dataset_name,time_window=time_window,save_folder=os.path.join(save_folder, "Correlograms"),store_data=True)
     
     # Retrieve problematic indices from the returned dictionary
@@ -227,20 +223,18 @@ Note: We went with both, the correlogram and the ISI check because the correlogr
 
 # Define a dictionary mapping dataset names to filtered file names.
 filteredCC_files = {"ctrl_rat_1": "ctrl_rat_1_filteredCC.pkl","ctrl_rat_2": "ctrl_rat_2_filteredCC.pkl","exp_rat_2":  "exp_rat_2_filteredCC.pkl","exp_rat_3":  "exp_rat_3_filteredCC.pkl"}
-
 filteredCC_datasets = {
     name: (datasets[name]["neurons"], datasets[name]["non_stimuli_time"])
     for name in filteredCC_files.keys()
 }
 
 # Set this flag to enable or disable filtering
-apply_filtering = True  # Change to False if you want raw ISI histograms without filtering
+apply_filtering = True
 
-# Loop over each filtered dataset and plot ISI histograms for all neurons.
+# Plot ISI histograms for all neurons
 for dataset_name, (neurons_data, non_stimuli_time) in filteredCC_datasets.items():
     print(f"\Creating TIHs for filtered dataset: {dataset_name}")
     
-    # Process each neuron in the filtered dataset.
     for idx, neuron in enumerate(neurons_data):
         spike_times = neuron[2]  # Extract spike times
         
@@ -256,7 +250,7 @@ for dataset_name, (neurons_data, non_stimuli_time) in filteredCC_datasets.items(
             apply_filter=apply_filtering
         )
 
-# Call the function to filter and save ISI-filtered datasets
+# Filter and save ISI-filtered datasets
 save_filtered_isi_datasets(
     {name: (neurons, non_stimuli_time) for name, (neurons, non_stimuli_time) in filteredCC_datasets.items()},
     processed_dir,
@@ -309,7 +303,7 @@ print("Firing Rates have been plotted and saved.")
 analyze_variability(final_filtered_datasets, processed_dir, final_filtered_files, save_folder)
 print("Fano Factor and CV have been plotted and saved.")
 
-#%% Survivor function to check for potential burst activity
+#% Survivor function to check for potential burst activity
 for dataset_name, (neurons, non_stimuli_time) in tqdm(final_filtered_datasets.items(), desc="Computing the Survivor Functions"):
     # Load the associated data to extract sacc_start and cta_time.
     data = load_dataset(os.path.join(processed_dir, final_filtered_files[dataset_name]))[0]
@@ -355,75 +349,67 @@ print("Survivor functions have been plotted and saved.")
 =================================================================================================================================================================================
 """
 """
-PSTH
+1. Rasterplots + smoothed PSTH
+2. 2x2 bar plots PSTHs + dataset summaries, with baseline subtraction = Y-Axis shows the diff btw baseline and evoked response
+3. Cross-correlograms Pre & Post CTA
 """
 
-# Ensure the PSTH figures folder is inside the correct project directory
+# 1. Rasterplots + smoothed PSTH
 psthfigures_dir = os.path.join(base_dir, "reports", "figures", "psth")
 os.makedirs(psthfigures_dir, exist_ok=True)
 
-# Create a dictionary to store precomputed PSTH results for all datasets
+# store precomputed PSTH data
 psth_data_map = {}
 
-# Loop over all datasets/files with a progress bar
 for dataset_name, (neurons, non_stimuli_time) in tqdm(final_filtered_datasets.items(), desc="Processing datasets", ncols=100):
-    # Load the associated data
     data = load_dataset(os.path.join(processed_dir, final_filtered_files[dataset_name]))[0]
     
     # Extract water and sugar events
     water_events = np.array(data.get("event_times", {}).get("water", []))
     sugar_events = np.array(data.get("event_times", {}).get("sugar", []))
     
-    # Debugging info
     # print(f"{dataset_name}: water_events: {len(water_events)}, sugar_events: {len(sugar_events)}")
     cta_time = data.get("CTA injection time", None)
     # print(f"{dataset_name}: CTA time: {cta_time}")
     
-    # Call psth_raster and store results
     psth_data = psth_raster(
         dataset_name,
         neurons,
         water_events,
         sugar_events,
         cta_time,
-        save_folder=psthfigures_dir  # Ensures PSTH figures save to the correct folder
+        save_folder=psthfigures_dir
     )
     
-    psth_data_map[dataset_name] = psth_data  # Store precomputed PSTH data
+    psth_data_map[dataset_name] = psth_data
 
 print("Raster plots and smoothed PSTHs have been saved.")
 
-# %%
-# Define base directory for raster figures
+# 2. 2x2 bar plots PSTHs + dataset summaries
 raster_figures_dir = os.path.join(base_dir, "reports", "figures", "PSTH_TwoByTwo")
 os.makedirs(raster_figures_dir, exist_ok=True)
 
-# Loop through datasets and generate raster-style histograms
 for dataset_name, (neurons, non_stimuli_time) in final_filtered_datasets.items():
-    print(f"Generating raster-style plots for {dataset_name}...")
+    print(f"Generating 2x2 PSTH plots with baseline subtraction for {dataset_name}...")
 
-    # Load dataset info
     data = load_dataset(os.path.join(processed_dir, final_filtered_files[dataset_name]))[0]
     cta_time = data.get("CTA injection time", None)
 
-    # Extract water & sugar event timestamps
     water_events = np.array(data.get("event_times", {}).get("water", []))
     sugar_events = np.array(data.get("event_times", {}).get("sugar", []))
 
-    # Call function, now saving in per-dataset subfolders
     plot_neuron_rasters_2x2(
         group_name=dataset_name,
         neurons=neurons,
         water_events=water_events,
         sugar_events=sugar_events,
         cta_time=cta_time,
-        save_folder=os.path.join(raster_figures_dir, dataset_name),  # Now saves per dataset
+        save_folder=os.path.join(raster_figures_dir, dataset_name),
         window=(-1, 2),
-        bin_width=0.05
+        bin_width=0.05 #ms
     )
 
 print("All 2x2 PSTH plots have been saved successfully!")
-
-# %%
-
+#%% 3. Cross-correlograms Pre & Post CTA
+#%% YAY, we're done!
 print("Analysis completed! Thanks a bunch for your patience :)")

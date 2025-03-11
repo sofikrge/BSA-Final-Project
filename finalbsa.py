@@ -149,7 +149,6 @@ for dataset_name, dataset in datasets.items():
     neurons_data = dataset["neurons"]
     time_window = dataset["non_stimuli_time"]
     print(f"\nProcessing Correlogram for Dataset: {dataset_name}. Please be patient, this might take a while.")
-    
     correlogram_data = plot_correlogram_matrix(neurons_data=neurons_data,binsize=binsizes[dataset_name],dataset_name=dataset_name,time_window=time_window,save_folder=os.path.join(save_folder, "Correlograms"),store_data=True)
     
     # Prints to aid with exclusion decision
@@ -157,8 +156,9 @@ for dataset_name, dataset in datasets.items():
     # print(f"Problematic indices for {dataset_name}: {problematic_neuron_indices}")
 #%% Apply manual filter
 """
-Define a manual filter: specify which neuron indices to fuse for each dataset
-As the autocorrelograms don't look faulty, we decided to fuse neurons that are likely to be the same neuron
+Manual filter based on correlogram results
+- As the autocorrelograms don't look too faulty, we decided to fuse neurons that are likely to be the same neuron
+- We were quite lenient at this stage as we did want to be balanced regarding how much data we lose
 """
 fusion_file_mapping = {"ctrl_rat_1": ("ctrl rat 1.pkl", "ctrl_rat_1_filtered.pkl"),"ctrl_rat_2": ("ctrl rat 2.pkl", "ctrl_rat_2_filtered.pkl"),"exp_rat_2":  ("exp rat 2.pkl", "exp_rat_2_filtered.pkl"),"exp_rat_3":  ("exp rat 3.pkl", "exp_rat_3_filtered.pkl")}
 

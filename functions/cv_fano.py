@@ -44,7 +44,7 @@ def analyze_variability(filtered_datasets, processed_dir, filtered_files, save_f
         loaded_data[dataset_name] = load_dataset(os.path.join(processed_dir, filtered_files[dataset_name]))[0]
 
     
-    variability_dir = os.path.join(save_folder, "variability")
+    variability_dir = os.path.join(save_folder, "CV_FF")
     os.makedirs(variability_dir, exist_ok=True)
     
     time_windows = ["Non-Stimuli", "Pre-CTA", "Post-CTA"]

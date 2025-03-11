@@ -8,7 +8,7 @@ def psth_raster(group_name, neurons, water_events, sugar_events, cta_time, save_
     (See original docstring for details.)
     """
     # Define the PSTH figures directory and ensure it exists.
-    figures_dir = os.path.join("reports", "figures", "psth")
+    figures_dir = os.path.join("reports", "figures", "Rasterplot_SmoothedPSTH")
     os.makedirs(figures_dir, exist_ok=True)
     
     # Split events into pre and post CTA.

@@ -22,7 +22,7 @@ def analyze_firing_rates(filtered_datasets, filtered_files, processed_dir, save_
       - The top panel shows three subplots (one for each time window) of the individual dataset firing rates.
       - The bottom panel shows three subplots of the group-level mean firing rates per window.
     """
-    firingrates_dir = os.path.join(save_folder, "firingrates")
+    firingrates_dir = os.path.join(save_folder, "Firing_Rates")
     os.makedirs(firingrates_dir, exist_ok=True)
     
     # Lists to collect per-recording data

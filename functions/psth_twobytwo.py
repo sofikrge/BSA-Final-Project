@@ -2,7 +2,7 @@ import os
 import numpy as np
 import matplotlib.pyplot as plt
 
-def plot_neuron_rasters_2x2(group_name, neurons, water_events, sugar_events, cta_time, save_folder="reports/figures/rasters", summary_folder="reports/figures/rasters/summary", window=(-1, 2), bin_width=0.05):
+def plot_neuron_rasters_2x2(group_name, neurons, water_events, sugar_events, cta_time, save_folder="reports/figures/PSTH_TwoByTwo", summary_folder="reports/figures/PSTH_TwoByTwo/Summary", window=(-1, 2), bin_width=0.05):
     """
     Generates and saves 2×2 raster-style histogram plots per neuron.
     Also creates a group-level summary raster plot stored in `rasters/summary/`.
@@ -18,8 +18,9 @@ def plot_neuron_rasters_2x2(group_name, neurons, water_events, sugar_events, cta
         window (tuple): Time window (start, end) relative to each event.
         bin_width (float): Width of time bins for histogram-like representation.
     """
-    dataset_folder = os.path.join(save_folder, group_name)  # Create dataset-specific folder
+    dataset_folder = save_folder  # Create dataset-specific folder
     os.makedirs(dataset_folder, exist_ok=True)  # Ensure dataset folder exists
+    os.makedirs(summary_folder, exist_ok=True)
 
     # Define pre and post CTA event times
     if cta_time is not None:

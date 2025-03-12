@@ -379,6 +379,7 @@ for dataset_name, (neurons, non_stimuli_time) in final_filtered_datasets.items()
         sugar_events=sugar_events,
         cta_time=cta_time,
         save_folder=os.path.join(raster_figures_dir, dataset_name),
+        summary_folder=os.path.join(raster_figures_dir, dataset_name, "Summary"),
         window=(-1, 2),
         bin_width=0.05 #ms
     )

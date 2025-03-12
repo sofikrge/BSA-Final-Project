@@ -2,12 +2,12 @@ import os
 import numpy as np
 import matplotlib.pyplot as plt
 
-def psth_raster(group_name, neurons, water_events, sugar_events, cta_time, save_folder="reports/figures/psth"):
+def psth_raster(group_name, neurons, water_events, sugar_events, cta_time, save_folder="reports/figures/PSTH_Raster"):
     """
     Generates and saves a single figure showing both pre-CTA and post-CTA raster plots and PSTH overlays side by side
     """
     
-    figures_dir = os.path.join("reports", "figures", "Rasterplot_SmoothedPSTH")
+    figures_dir = save_folder
     os.makedirs(figures_dir, exist_ok=True)
     
     # Split events into pre and post CTA

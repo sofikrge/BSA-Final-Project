@@ -3,7 +3,6 @@ import numpy as np
 import matplotlib.pyplot as plt
 from functions.correlogram import correlogram
 from matplotlib import patches as mpatches
-from matplotlib.lines import Line2D
 from tqdm.auto import tqdm
 from joblib import Parallel, delayed
 
@@ -30,14 +29,6 @@ def compute_correlogram(i, j, prefiltered_spikes, binsize, limit):
 # Main function to plot the correlogram matrix
 def plot_correlogram_matrix(neurons_data, binsize, dataset_name, limit=0.02, time_window=None, save_folder=None, store_data=True):
     num_neurons = len(neurons_data)
-    num_bins = int(2 * limit / binsize)
-
-    # Compute center bin indices
-    if num_bins % 2 == 0:
-        center_left = num_bins // 2 - 1
-        center_right = num_bins // 2
-    else:
-        center_left = center_right = num_bins // 2
 
     problematic_neuron_indices = set()
 
@@ -60,29 +51,21 @@ def plot_correlogram_matrix(neurons_data, binsize, dataset_name, limit=0.02, tim
 
     # Organise results
     grid_data = [[None] * num_neurons for _ in range(num_neurons)]
-    all_center_vals = []  # to compute global threshold later on
     correlogram_data = {} if store_data else None
 
     # Loop through results and store data
     for i, j, counts, bins in results:
+        num_bins_actual = len(bins)
         bin_centers = (bins[:-1] + bins[1:]) / 2
         grid_data[i][j] = {
             "counts": counts,
             "bins": bins,
             "bin_centers": bin_centers,
-            "center_left": center_left,
-            "center_right": center_right
+            "center": num_bins_actual // 2,
         }
-        if store_data: # save data (optional)
+        if store_data:  # save data (optional)
             key = f"Neuron {i+1}" if i == j else f"Neuron {i+1} vs Neuron {j+1}"
             correlogram_data[key] = {"counts": counts, "bins": bins}
-        if i == j:  # For autocorrelograms: collect center bin values
-            all_center_vals.append(counts[center_left])
-            all_center_vals.append(counts[center_right])
-
-    # Compute the global threshold: mean of all center bin values plus two standard deviations
-    all_center_vals = np.array(all_center_vals)
-    global_threshold = all_center_vals.mean() + 2 * all_center_vals.std()
 
     # Create matrix plot grid
     fig, axes = plt.subplots(num_neurons, num_neurons, figsize=(num_neurons * 3, num_neurons * 3))
@@ -94,23 +77,28 @@ def plot_correlogram_matrix(neurons_data, binsize, dataset_name, limit=0.02, tim
             counts = data["counts"]
             bins = data["bins"]
             bin_centers = data["bin_centers"]
-            center_line = (bin_centers[center_left] + bin_centers[center_right]) / 2
+            center_bin = data["center"]
+            center_line = bin_centers[center_bin]
 
             # Determine if the correlogram is problematic.
-            if i == j:
-                # Autocorrelogram: problematic if either center bin exceeds threshold or global peak is immediately outside center bins
-                condition_A = (counts[center_left] > global_threshold or counts[center_right] > global_threshold)
+            if i == j: # Autocorrelogram
+                # Compute local stats
+                local_mean = np.mean(counts)
+                local_std = np.std(counts)
+                threshold = local_mean - 2 * local_std
                 global_peak_index = int(np.argmax(counts))
-                condition_B = (global_peak_index == center_left - 1 or global_peak_index == center_right + 1)
+                # # Flag as problematic if the center bins count is above the threshold
+                # or if the bins immediately adjacent to the center are the global maximum.
+                condition_A=(counts[center_bin] > threshold)
+                condition_B=(global_peak_index == center_bin-1) or (global_peak_index == center_bin+1)
                 is_problematic = condition_A or condition_B
-                if is_problematic:
-                    problematic_neuron_indices.add(i)
-            else:
-                # Cross-correlogram: problematic if a center bin is the minimum.
-                is_problematic = (counts[center_left] == counts.min() or counts[center_right] == counts.min())
-                if is_problematic:
-                    problematic_neuron_indices.add(i)
-                    problematic_neuron_indices.add(j)
+            else: # Crosscorrelogram
+                # Cross-correlogram: problematic if a center bin count if below the threshold
+                local_mean = np.mean(counts)
+                local_std = np.std(counts)
+                threshold = local_mean - 2 * local_std
+                # Flag as problematic if the center bins count is below the threshold.
+                is_problematic = (counts[center_bin] < threshold)
 
             # Determine color based on problematic status
             if is_problematic:
@@ -121,40 +109,32 @@ def plot_correlogram_matrix(neurons_data, binsize, dataset_name, limit=0.02, tim
             # Plot in the matrix
             ax = axes[i, j] if num_neurons > 1 else axes
             ax.bar(bin_centers, counts, width=np.diff(bins), align='center', color=color, alpha=0.7,
-                   edgecolor='k', linewidth=0.25)
+                   edgecolor='k', linewidth=0.1)
             ax.set_xlim(-limit, limit)
             ax.set_xticks([])
             ax.set_yticks([])
             ax.axvline(center_line, color='black', linestyle='--', linewidth=0.5)
 
-            # Highlight the center bins in pastel pink
+            # Highlight the center bin in pastel pink
             pink_color = '#FFB6C1'
-            ax.bar(bin_centers[center_left:center_left+1],
-                   counts[center_left:center_left+1],
-                   width=np.diff(bins)[center_left:center_left+1],
-                   align='center', color=pink_color, alpha=1, edgecolor='k', linewidth=0.25)
-            ax.bar(bin_centers[center_right:center_right+1],
-                   counts[center_right:center_right+1],
-                   width=np.diff(bins)[center_right:center_right+1],
-                   align='center', color=pink_color, alpha=1, edgecolor='k', linewidth=0.25)
+            ax.bar(bin_centers[center_bin:center_bin+1],
+                   counts[center_bin:center_bin+1],
+                   width=np.diff(bins)[center_bin:center_bin+1],
+                   align='center', color=pink_color, alpha=1, edgecolor='k', linewidth=0.1)
 
             # For the upper triangle, mirror the plot
             if i != j:
                 ax_mirror = axes[j, i] if num_neurons > 1 else axes
                 ax_mirror.bar(-bin_centers, counts, width=np.diff(bins), align='center', color=color, alpha=0.7,
-                              edgecolor='k', linewidth=0.25)
+                              edgecolor='k', linewidth=0.1)
                 ax_mirror.set_xlim(-limit, limit)
                 ax_mirror.set_xticks([])
                 ax_mirror.set_yticks([])
                 ax_mirror.axvline(-center_line, color='black', linestyle='--', linewidth=0.5)
-                ax_mirror.bar(-bin_centers[center_left:center_left+1],
-                              counts[center_left:center_left+1],
-                              width=np.diff(bins)[center_left:center_left+1],
-                              align='center', color=pink_color, alpha=1, edgecolor='k', linewidth=0.25)
-                ax_mirror.bar(-bin_centers[center_right:center_right+1],
-                              counts[center_right:center_right+1],
-                              width=np.diff(bins)[center_right:center_right+1],
-                              align='center', color=pink_color, alpha=1, edgecolor='k', linewidth=0.25)
+                ax_mirror.bar(-bin_centers[center_bin:center_bin+1],
+                              counts[center_bin:center_bin+1],
+                              width=np.diff(bins)[center_bin:center_bin+1],
+                              align='center', color=pink_color, alpha=1, edgecolor='k', linewidth=0.1)
 
             # Label the first row and column
             if i == 0:
@@ -169,9 +149,8 @@ def plot_correlogram_matrix(neurons_data, binsize, dataset_name, limit=0.02, tim
     patch_auto = mpatches.Patch(color='#77DD77', label='Autocorrelogram (non-problematic)')
     patch_cross = mpatches.Patch(color='#CDA4DE', label='Cross-correlogram (non-problematic)')
     patch_prob = mpatches.Patch(color='#FFFF99', label='Problematic')
-    patch_center = mpatches.Patch(color='#FFB6C1', label='Center bins')
-    patch_thresh = Line2D([], [], color='none', label=f'Global threshold: {global_threshold:.2e}')
-    fig.legend(handles=[patch_auto, patch_cross, patch_prob, patch_center, patch_thresh],
+    patch_center = mpatches.Patch(color='#FFB6C1', label='Center bin')
+    fig.legend(handles=[patch_auto, patch_cross, patch_prob, patch_center],
                loc='upper right', ncol=1)
 
     # Save the figure & store data (optional)
@@ -183,7 +162,6 @@ def plot_correlogram_matrix(neurons_data, binsize, dataset_name, limit=0.02, tim
     plt.close() 
     
     if store_data:
-        correlogram_data["global_threshold"] = global_threshold
         correlogram_data["problematic_neuron_indices"] = problematic_neuron_indices
         return correlogram_data
 

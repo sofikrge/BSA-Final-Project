@@ -58,7 +58,7 @@ from tqdm import tqdm
 from functions.load_dataset import load_dataset
 from functions.plot_correlogram_matrix import plot_correlogram_matrix
 from functions.isi_tih import isi_tih
-from functions.analyze_firing_rates import analyze_firing_rates
+from functions.analyze_firing_rates import analyze_firing_rates 
 from functions.cv_fano import analyze_variability
 from functions.apply_manual_fusion import apply_manual_fusion
 from functions.isi_tih import save_filtered_isi_datasets
@@ -89,7 +89,7 @@ for name, path in dataset_paths.items():
     datasets[name] = {"data": data, "neurons": neurons, "non_stimuli_time": non_stimuli_time}
 
 # Set binsize in s for first operations
-binsizes = {key: 0.0004 for key in datasets.keys()}
+binsizes = {key: 0.0004 for key in datasets.keys()} # bc it is half of the absolute refractory period
 #%%
 """
 =================================================================================================================================================================================
@@ -137,11 +137,11 @@ Notes on process
 - first did 0-tolerance plotting, almost all neurons would have to be excluded
 - thought about noise, distant neurons affecting the recording etc. 
 Our final criteria:
-- for autocorrelograms: if either center bin exceeds global_threshold (mean + 2 stds of all correlogram center bins), or if the global peak is immediately outside the center bins.
-- for cross-correlograms: if either center bins are the minima for the correlogram
+- for autocorrelograms: problematic if the center bins count is above the threshold of local mean - 2stdevs (95% of distribution) or if the bins immediately adjacent to the center are the global maximum.
+- for cross-correlograms: if either center bins is below the defined threshold
     
 Bin sizes & time-related decisions
-- We chose 0.0004s for all datasets because of our exclusion criteria 
+- We chose 0.0002sbecause of our exclusion criteria 
     -> Elsevier "The absolute refractory period lasts about 1/2500 of a second and is followed by the relative refractory period. 
     -> During the relative refractory period, a higher intensity stimulus can trigger an impulse."
     -> Link: https://www.sciencedirect.com/topics/medicine-and-dentistry/refractory-period
@@ -165,13 +165,13 @@ for dataset_name, dataset in datasets.items():
 
 print("\nAll correlograms have been plotted and saved.")
 
-# 2. Manual filter
+#%% 2. Manual filter
 fusion_file_mapping = {"ctrl_rat_1": ("ctrl rat 1.pkl", "ctrl_rat_1_filtered.pkl"),"ctrl_rat_2": ("ctrl rat 2.pkl", "ctrl_rat_2_filtered.pkl"),"exp_rat_2":  ("exp rat 2.pkl", "exp_rat_2_filtered.pkl"),"exp_rat_3":  ("exp rat 3.pkl", "exp_rat_3_filtered.pkl")}
 manual_fusion = {
-    "ctrl_rat_1": [{0, 2}, {21, 22, 23, 24}], 
-    "ctrl_rat_2": [{0, 1, 2}], # e.g. meaning: fuse 0 1 and 2 into one neuron
+    "ctrl_rat_1": [{0, 2}, {13, 14}], 
+    "ctrl_rat_2": [{0, 1}], # e.g. meaning: fuse 0 1 and 2 into one neuron
     "exp_rat_2": [],  
-    "exp_rat_3": [{0, 1}, {2, 6, 20}, {9, 10}, {11,12}, {13,14,}] 
+    "exp_rat_3": [{2,3}, {4,5}, {11,12}, {20,21,}] 
 }
 
 apply_manual_fusion(datasets, manual_fusion, fusion_file_mapping, raw_dir, processed_dir)

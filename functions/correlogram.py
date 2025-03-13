@@ -42,6 +42,8 @@ def correlogram(t1, t2=None, binsize=.0004, limit=.02, auto=False, normalize=Tru
 
     # Create histogram bins
     num_bins = int(2 * limit / binsize) # total width spans from -limit to + limit so 2*limit
+    if num_bins % 2 == 0: # force odd number of bins for single center bin
+        num_bins += 1
     bins = np.linspace(-limit, limit, num_bins + 1) 
 
     # Find relevant spikes -> only those that fall in the histogram range
@@ -55,10 +57,14 @@ def correlogram(t1, t2=None, binsize=.0004, limit=.02, auto=False, normalize=Tru
 
     # in auto-corr each spike has a zero lag with itself, creating artifical peak at zero
     # fix this by setting the zero bin to zero
+    # Remove self-spike bias for autocorrelograms.
     if auto:
-        c_temp, bins_temp = np.histogram([0.], bins=bins)
-        bin_containing_zero = np.nonzero(c_temp)[0][0]
-        count[bin_containing_zero] = 0
+        self_differences = np.zeros(len(t1))
+        self_hist, _ = np.histogram(self_differences, bins=bins)
+        bin_containing_zero = np.nonzero(self_hist)[0][0]
+        # Subtract the self-spike count (one per spike)
+        count[bin_containing_zero] = max(count[bin_containing_zero] - len(t1), 0)
+
 
     # swap t1 and t2 back if needed
     if swap_args:

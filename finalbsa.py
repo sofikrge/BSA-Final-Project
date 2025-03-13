@@ -6,14 +6,9 @@ BSA Final Assignment - Denise Jaeschke & Sofia Karageorgiou
 """
 """
 All TODO s
-    - double-check how did we define the timestamps?
     - when do we want to look at which time window? 
-    - compare our calculations with what was done in tirgulim to be on the safe side
     - try out code on a windows computer
-    - RASTERPLOTS LOOK WEIRD
-    - check all figures carefully
     - why did we calc the cv of the isis and not the cv in general
-    - check saving folders again!
 """
 """
 Class notes on metrics:
@@ -54,13 +49,15 @@ Initial plan for exclusion:
 import numpy as np
 import os
 from tqdm import tqdm
+import glob
+import pickle
 
 from functions.load_dataset import load_dataset
 from functions.plot_correlogram_matrix import plot_correlogram_matrix
 from functions.isi_tih import isi_tih
 from functions.analyze_firing_rates import analyze_firing_rates 
 from functions.cv_fano import analyze_variability
-from functions.apply_manual_fusion import apply_manual_fusion
+from functions.apply_manual_fusion import apply_manual_modification
 from functions.isi_tih import save_filtered_isi_datasets
 from functions.plot_survivor import plot_survivor, plot_survivor_dataset_summary
 from functions.psth_rasterplot import psth_raster
@@ -151,12 +148,14 @@ Bin sizes & time-related decisions
 - As the autocorrelograms don't look too faulty, we decided to fuse neurons that are likely to be the same neuron
 - We were quite lenient at this stage as we did want to be balanced regarding how much data we lose
 
+3. Double-checking the fusion and deletion made an impact
+
 """
 # 1. Correlogram
 for dataset_name, dataset in datasets.items():
     neurons_data = dataset["neurons"]
     time_window = dataset["non_stimuli_time"]
-    print(f"\nProcessing Correlogram for Dataset: {dataset_name}. Please be patient, this might take a while.")
+    print(f"\nProcessing Correlogram for Raw Dataset: {dataset_name}. Please be patient, this might take a while.")
     correlogram_data = plot_correlogram_matrix(neurons_data=neurons_data,binsize=binsizes[dataset_name],dataset_name=dataset_name,time_window=time_window,save_folder=os.path.join(save_folder, "Correlograms"),store_data=True)
     
     # Prints to aid with exclusion decision
@@ -165,17 +164,61 @@ for dataset_name, dataset in datasets.items():
 
 print("\nAll correlograms have been plotted and saved.")
 
-#%% 2. Manual filter
-fusion_file_mapping = {"ctrl_rat_1": ("ctrl rat 1.pkl", "ctrl_rat_1_filtered.pkl"),"ctrl_rat_2": ("ctrl rat 2.pkl", "ctrl_rat_2_filtered.pkl"),"exp_rat_2":  ("exp rat 2.pkl", "exp_rat_2_filtered.pkl"),"exp_rat_3":  ("exp rat 3.pkl", "exp_rat_3_filtered.pkl")}
-manual_fusion = {
-    "ctrl_rat_1": [{0, 2}, {13, 14}], 
-    "ctrl_rat_2": [{0, 1}], # e.g. meaning: fuse 0 1 and 2 into one neuron
-    "exp_rat_2": [],  
-    "exp_rat_3": [{2,3}, {4,5}, {11,12}, {20,21,}] 
+# 2. Manual filter
+file_mapping = {
+    "ctrl_rat_1": "ctrl rat 1.pkl",
+    "ctrl_rat_2": "ctrl rat 2.pkl",
+    "exp_rat_2": "exp rat 2.pkl",
+    "exp_rat_3": "exp rat 3.pkl"
 }
 
-apply_manual_fusion(datasets, manual_fusion, fusion_file_mapping, raw_dir, processed_dir)
-print("\nAll manual fusions have been processed and filtered datasets have been saved.")
+manual_fusion = {
+    "ctrl_rat_1": [{0, 2}, {13, 14}],
+    "ctrl_rat_2": [{0, 1}],  # e.g. fuse neurons 1 and 2
+    "exp_rat_2": [],
+    "exp_rat_3": [{2, 3}, {4, 5}, {11, 12}, {20, 21}]
+}
+
+manual_deletion = {
+    "ctrl_rat_1": [{25}],  # e.g. delete neuron 26
+    "ctrl_rat_2": [],   
+    "exp_rat_2": [{1,2,4,5,6,7,10}], 
+    "exp_rat_3": []  
+}
+
+apply_manual_modification(datasets, manual_fusion, manual_deletion, file_mapping, raw_dir, processed_dir)
+print("\nAll manually specified fusions and deletions have been processed and filtered datasets have been saved.")
+
+# To double check our fusion and deletion made an impact, we are plotting the correlograms again
+save_folder_processed = os.path.join(save_folder, "ProcessedCorrelograms")
+
+# Find all processed dataset files ending with "CCFiltered.pkl"
+filtered_files = glob.glob(os.path.join(processed_dir, "*_CCFiltered.pkl"))
+
+# Loop over each filtered dataset
+for filtered_file in filtered_files:
+    dataset_name = os.path.basename(filtered_file).replace("_CCFiltered.pkl", "")
+    
+    with open(filtered_file, "rb") as f:
+        filtered_dataset = pickle.load(f)
+
+    neurons_data_filtered = filtered_dataset["neurons"]
+
+    # Reuse binsize and time_window from your original definitions
+    binsize_filtered = binsizes[dataset_name]
+    time_window_filtered = filtered_dataset["non_stimuli_time"]
+
+    print(f"\nProcessing Correlogram for Processed Dataset: {dataset_name}. Please wait...")
+    correlogram_data_filtered = plot_correlogram_matrix(
+        neurons_data=neurons_data_filtered,
+        binsize=binsize_filtered,
+        dataset_name=f"{dataset_name}_filtered",
+        time_window=time_window_filtered,
+        save_folder=save_folder_processed,
+        store_data=True
+    )
+
+print("\nAll processed correlograms have been plotted and saved.")
 
 #%%
 """
@@ -202,7 +245,7 @@ Note:
 """
 
 # Dictionary mapping dataset names to filtered file names
-filteredCC_files = {"ctrl_rat_1": "ctrl_rat_1_filteredCC.pkl","ctrl_rat_2": "ctrl_rat_2_filteredCC.pkl","exp_rat_2":  "exp_rat_2_filteredCC.pkl","exp_rat_3":  "exp_rat_3_filteredCC.pkl"}
+filteredCC_files = {"ctrl_rat_1": "ctrl_rat_1_CCFiltered.pkl","ctrl_rat_2": "ctrl_rat_2_CCFiltered.pkl","exp_rat_2":  "exp_rat_2_CCFiltered.pkl","exp_rat_3":  "exp_rat_3_CCFiltered.pkl"}
 filteredCC_datasets = {
     name: (datasets[name]["neurons"], datasets[name]["non_stimuli_time"])
     for name in filteredCC_files.keys()

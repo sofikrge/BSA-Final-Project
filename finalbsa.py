@@ -50,6 +50,8 @@ import numpy as np
 import os
 from tqdm import tqdm
 import glob
+from scipy.stats import ks_2samp, ttest_rel, wilcoxon
+import pandas as pd
 import pickle
 
 from functions.load_dataset import load_dataset
@@ -377,6 +379,7 @@ os.makedirs(psthfigures_dir, exist_ok=True)
 
 # store precomputed PSTH data
 psth_data_map = {}
+psth_group_data = {}
 
 for dataset_name, (neurons, non_stimuli_time) in tqdm(final_filtered_datasets.items(), desc="Processing datasets", ncols=100):
     data = load_dataset(os.path.join(processed_dir, final_filtered_files[dataset_name]))[0]
@@ -399,6 +402,64 @@ for dataset_name, (neurons, non_stimuli_time) in tqdm(final_filtered_datasets.it
     )
     
     psth_data_map[dataset_name] = psth_data
+    psth_group_data[dataset_name] = psth_data_filtered
+
+# Group the datasets
+control_group = [psth_group_data[name] for name in psth_group_data if "ctrl" in name]
+experimental_group = [psth_group_data[name] for name in psth_group_data if "exp" in name]
+
+# Combine data within each group
+def combine_group_data(group_data, key):
+    combined_data = []
+    for data in group_data:
+        combined_data.extend(data[key])
+    return combined_data
+
+control_water_pre = combine_group_data(control_group, "psth_water_pre")
+control_water_post = combine_group_data(control_group, "psth_water_post")
+control_sugar_pre = combine_group_data(control_group, "psth_sugar_pre")
+control_sugar_post = combine_group_data(control_group, "psth_sugar_post")
+
+experimental_water_pre = combine_group_data(experimental_group, "psth_water_pre")
+experimental_water_post = combine_group_data(experimental_group, "psth_water_post")
+experimental_sugar_pre = combine_group_data(experimental_group, "psth_sugar_pre")
+experimental_sugar_post = combine_group_data(experimental_group, "psth_sugar_post")
+
+# Perform statistical testing (paired t-test or Wilcoxon signed-rank test)
+def test_significance(pre, post, label):
+    if len(pre) == len(post) and len(pre) > 1:
+        stat, p = ttest_rel(pre, post)  # Paired t-test
+    else:
+        stat, p = wilcoxon(pre, post) if len(pre) > 0 and len(post) > 0 else (np.nan, np.nan)  # Wilcoxon if possible
+    print(f"{label}: Statistic={stat:.3f}, p-value={p:.5f}")
+
+# Perform distribution test (Kolmogorov-Smirnov test)
+def test_distribution(pre, post, label):
+    if len(pre) > 0 and len(post) > 0:
+        stat, p = ks_2samp(pre, post)  # Kolmogorov-Smirnov test
+    else:
+        stat, p = np.nan, np.nan
+    print(f"{label} (KS Test): Statistic={stat:.3f}, p-value={p:.5f}")
+
+# Run the statistical tests for each condition
+print("Control Group Test Results:")
+print("t-test / Wilcoxon Test Results:")
+test_significance(control_water_pre, control_water_post, "Control Water Pre vs. Post")
+test_significance(control_sugar_pre, control_sugar_post, "Control Sugar Pre vs. Post")
+
+print("KS Test Results:")
+test_distribution(control_water_pre, control_water_post, "Control Water Pre vs. Post")
+test_distribution(control_sugar_pre, control_sugar_post, "Control Sugar Pre vs. Post")
+
+print("\nExperimental Group Test Results:")
+print("t-test / Wilcoxon Test Results:")
+test_significance(experimental_water_pre, experimental_water_post, "Experimental Water Pre vs. Post")
+test_significance(experimental_sugar_pre, experimental_sugar_post, "Experimental Sugar Pre vs. Post")
+
+print("KS Test Results:")
+test_distribution(experimental_water_pre, experimental_water_post, "Experimental Water Pre vs. Post")
+test_distribution(experimental_sugar_pre, experimental_sugar_post, "Experimental Sugar Pre vs. Post")
+
 
 print("\nAll Raster Plots and Smoothed PSTHs have been saved.")
 

@@ -2,6 +2,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import os
 import pandas as pd
+from scipy.stats import ttest_rel, wilcoxon
 
 from functions.load_dataset import load_dataset
 
@@ -35,6 +36,11 @@ def analyze_firing_rates(filtered_datasets, filtered_files, processed_dir, save_
     post_CTA_stds = []
     group_list = []
     summary_stats = []  # store stats for each recording
+    pre_ctrl = [] 
+    pre_exp = [] 
+    post_ctrl = [] 
+    post_exp = []
+    group_results = []
 
     # Process each dataset
     for dataset_name, (neurons_data, non_stimuli_time) in filtered_datasets.items():
@@ -66,6 +72,14 @@ def analyze_firing_rates(filtered_datasets, filtered_files, processed_dir, save_
             # Determine group based on dataset name
             group = "Control" if "ctrl" in dataset_name.lower() else "Experimental"
             
+            # add to group for group level testing
+            if group == "Control":
+                pre_ctrl.extend(rates_pre)
+                post_ctrl.extend(rates_post)
+            else: 
+                pre_exp.extend(rates_pre)
+                post_exp.extend(rates_post)
+
             # Append per-recording data
             recording_names.append(dataset_name)
             non_stimuli_means.append(mean_non)
@@ -75,6 +89,12 @@ def analyze_firing_rates(filtered_datasets, filtered_files, processed_dir, save_
             pre_CTA_stds.append(std_pre)
             post_CTA_stds.append(std_post)
             group_list.append(group)
+
+            # Test for significant differences
+            # Perform paired t-test or Wilcoxon test
+            if len(rates_pre) > 1 and len(rates_post) > 1:
+                t_stat, p_value_t = ttest_rel(rates_pre, rates_post)
+                w_stat, p_value_w = wilcoxon(rates_pre, rates_post)
             
             # Store summary stats per dataset
             summary_stats.append({
@@ -85,12 +105,33 @@ def analyze_firing_rates(filtered_datasets, filtered_files, processed_dir, save_
                 "Post-CTA Mean": mean_post,
                 "Non-Stimuli Std": std_non,
                 "Pre-CTA Std": std_pre,
-                "Post-CTA Std": std_post
+                "Post-CTA Std": std_post,
+                "Paired T-Test Stat": t_stat,
+                "Paired T-Test P-Value": p_value_t,
+                "Wilcoxon Stat": w_stat,
+                "Wilcoxon P-Value": p_value_w
             })
             
         except Exception as e:
             print(f"Error processing {dataset_name}: {e}")
     
+    # Further Group based processing
+    if len(pre_ctrl) > 1 and len(post_ctrl) > 1:
+        t_exp, p_t_exp = ttest_rel(pre_ctrl, post_ctrl)
+        w_exp, p_w_exp = wilcoxon(pre_ctrl, post_ctrl)
+        
+    if len(pre_exp) > 1 and len(post_exp) > 1:
+        t_ctrl, p_t_ctrl = ttest_rel(pre_exp, post_exp)
+        w_ctrl, p_w_ctrl = wilcoxon(pre_exp, post_exp)
+
+    group_results = pd.DataFrame({
+            "Group": ["Experimental", "Control"],
+            "T-Test Stat": [t_exp, t_ctrl],
+            "P-Value (t-test)": [p_t_exp, p_t_ctrl],
+            "Wilcoxon Stat": [w_exp, w_ctrl],
+            "P-Value (wilcox)": [p_w_exp, p_w_ctrl]
+    })
+
     # Convert to DataFrame for further grouping
     summary_df = pd.DataFrame(summary_stats)
     
@@ -180,3 +221,5 @@ def analyze_firing_rates(filtered_datasets, filtered_files, processed_dir, save_
     print(summary_df.head())
     print("\nGroup-level summary of firing rates (Control vs Experimental):")
     print(group_summary)
+    print("\nGroup-level test of firing rates (Pre vs Post):")
+    print(group_results)

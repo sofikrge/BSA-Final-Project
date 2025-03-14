@@ -392,7 +392,7 @@ for dataset_name, (neurons, non_stimuli_time) in tqdm(final_filtered_datasets.it
     cta_time = data.get("CTA injection time", None)
     # print(f"{dataset_name}: CTA time: {cta_time}")
     
-    psth_data = psth_raster(
+    psth_data, psth_data_filtered = psth_raster(
         dataset_name,
         neurons,
         water_events,
@@ -490,3 +490,4 @@ for dataset_name, (neurons, non_stimuli_time) in final_filtered_datasets.items()
 
 print("\nAll 2x2 PSTH plots have been saved successfully!")
 print("\nAnalysis completed! Thanks a bunch for your patience :)")
+# %%

@@ -4,46 +4,6 @@
 BSA Final Assignment - Denise Jaeschke & Sofia Karageorgiou
 =================================================================================================================================================================================
 """
-"""
-All TODO s
-    - when do we want to look at which time window? 
-    - try out code on a windows computer
-    - why did we calc the cv of the isis and not the cv in general
-"""
-"""
-Class notes on metrics:
-    - Mean spiking rate
-    - Variance
-    - Coefficient of Variation (CV)
-        1 for Poisson, because both mean and variance = lambda (rate parameter of process so average number of events in a given time interval)
-        Shows how random vs regular activity
-        When >1 then neurons are bursty, variability higher than expected
-        When <1 usually dealing with regular neurons 
-    - Fano Factor
-        F >1 indicates overdispersion so larger variance than mean, could be clustering or correlation among events
-        F<1 underdispersion, more regular or uniform distribution of events than what a Poisson assumes
-        If Fano factor approaches Cv^2 over long time intervals, it means that the next spike depends on the previous one
-    - ISI
-        What is the chance for a spike t seconds after the previous
-    - TIH
-        Histogram of time difference between adjacent spikes (so of ISI)
-    - Survivor function
-        probability neuron stays quiet for time t after previous spike, initial value is 1 and decreases to 0 as t approaches infinity 
-    - Hazard function
-        independent probability to fire at any single point
-        mainly used to detect burst activity and refractory period
-        focuses on risk of an event happening regardless of history
-        basically rate at which survivor function decays
-        => we decided not to look into bc we do not a lot of neurons to begin with, might get very noisy at the end because there are only few neurons that spike with such long ISI
-
-Initial plan for exclusion:
-    - only look at unstimulated phase
-    - 0.5ms bin size as that is the absolute refractory period -> one spike is happening so look at 2 bins
-    - no immediate peak next to absolute refractory period
-    - 2ms relative refractory period -> look at 4 bins, there should be close to none as we are looking at the unstimulated 
-    phase and a very strong stimulus would be needed for a new spike
-    - chose a conservative criterion because our biggest enemy too high is data loss
-"""
 
 #%% Imports, loading data, and setting up directories
 import numpy as np
@@ -131,6 +91,9 @@ print(neurons[0])
 =================================================================================================================================================================================
 """
 """
+
+Overview of the next steps: 
+
 1. Correlogram
 Notes on process
 - first did 0-tolerance plotting, almost all neurons would have to be excluded
@@ -140,17 +103,17 @@ Our final criteria:
 - for cross-correlograms: if either center bins is below the defined threshold
     
 Bin sizes & time-related decisions
-- We chose 0.0002sbecause of our exclusion criteria 
+- We chose 0.0004s because of our exclusion criteria 
     -> Elsevier "The absolute refractory period lasts about 1/2500 of a second and is followed by the relative refractory period. 
     -> During the relative refractory period, a higher intensity stimulus can trigger an impulse."
     -> Link: https://www.sciencedirect.com/topics/medicine-and-dentistry/refractory-period
 - Only look at unstimulated phase to be able to see the relative refrac period as well
 
 2. Manual fusion based on correlogram results
-- As the autocorrelograms don't look too faulty, we decided to fuse neurons that are likely to be the same neuron
+- Fused neurons that were flagged as problematic in the crosscorrelograms + if we felt like their plots looked somewhat symmetrical and they weren't just flagged as problematic bc of generally low firing rates
 - We were quite lenient at this stage as we did want to be balanced regarding how much data we lose
 
-3. Double-checking the fusion and deletion made an impact
+3. Double-checking the fusion and deletion made an impact by rendering new correlograms 
 
 """
 # 1. Correlogram
@@ -166,38 +129,31 @@ for dataset_name, dataset in datasets.items():
 
 print("\nAll correlograms have been plotted and saved.")
 
-# 2. Manual filter
+# 2. Manual fusion + deletion
 file_mapping = {
     "ctrl_rat_1": "ctrl rat 1.pkl",
     "ctrl_rat_2": "ctrl rat 2.pkl",
     "exp_rat_2": "exp rat 2.pkl",
     "exp_rat_3": "exp rat 3.pkl"
 }
-
 manual_fusion = {
     "ctrl_rat_1": [{0, 2}, {13, 14}],
     "ctrl_rat_2": [{0, 1}],  # e.g. fuse neurons 1 and 2
     "exp_rat_2": [],
     "exp_rat_3": [{2, 3}, {4, 5}, {11, 12}, {20, 21}]
 }
-
 manual_deletion = {
     "ctrl_rat_1": [{25}],  # e.g. delete neuron 26
     "ctrl_rat_2": [],   
     "exp_rat_2": [{1,2,4,5,6,7,10}], 
     "exp_rat_3": []  
 }
-
 apply_manual_modification(datasets, manual_fusion, manual_deletion, file_mapping, raw_dir, processed_dir)
 print("\nAll manually specified fusions and deletions have been processed and filtered datasets have been saved.")
 
-# To double check our fusion and deletion made an impact, we are plotting the correlograms again
+# 3. Plotting Correlograms of filtered data
 save_folder_processed = os.path.join(save_folder, "ProcessedCorrelograms")
-
-# Find all processed dataset files ending with "CCFiltered.pkl"
 filtered_files = glob.glob(os.path.join(processed_dir, "*_CCFiltered.pkl"))
-
-# Loop over each filtered dataset
 for filtered_file in filtered_files:
     dataset_name = os.path.basename(filtered_file).replace("_CCFiltered.pkl", "")
     
@@ -206,7 +162,7 @@ for filtered_file in filtered_files:
 
     neurons_data_filtered = filtered_dataset["neurons"]
 
-    # Reuse binsize and time_window from your original definitions
+    # Reuse binsize and time_window from original definitions
     binsize_filtered = binsizes[dataset_name]
     time_window_filtered = filtered_dataset["non_stimuli_time"]
 
@@ -230,19 +186,12 @@ print("\nAll processed correlograms have been plotted and saved.")
 """
 """
 
-As we were quite lenient with our sorting in the previous criterion, 
-we will now sort out the spikes that are too close to each other 
-and must be due to be noise or incorrect spike sorting. 
-We will use the absolute refractory period of 1/2500s to filter out these spikes.
-
-We searched literature but could not find a paper that explicitly 
-mentioned fitlering out spikes occurring in the absolute refractory period
-so we tried it out compared the distributions.
+As we were quite lenient with our sorting in the previous criterion, we will now sort out the spikes that are too close to each other and must be due to be noise or 
+incorrect spike sorting. We will use the absolute refractory period of 1/2500s to filter out these spikes.
 
 Note: 
-    We went with both, the correlogram and the ISI filtering because 
-    the correlogram gives us a better sense of firing patters as 
-    it is not just about consecutive spikes, while the ISI focuses on the latter.
+    We went with both, the correlogram and the ISI filtering because the correlogram gives us a better sense of firing patters as it is not just about consecutive spikes, 
+    while the ISI focuses on the latter.
 
 """
 
@@ -292,8 +241,7 @@ Checking the debug prints showed us that based on our criterion:
 
 That would force us to remove a lot of neurons. 
 So we decided to keep the neurons but remove biologically impossible spikes.
-For this we had to make some arbitrary decision unfortunately. 
-We decided to keep the first spike and remove all spikes that are too close to the first spike.
+For this we had to make the arbitrary decision unfortunately, to always keep the first spike and remove the spikes that were too close to the first one.
 """
 
 # %%
@@ -330,7 +278,7 @@ print("Fano Factor and CV have been plotted and saved.")
 # Survivor function to check for potential burst activity
 for dataset_name, (neurons, non_stimuli_time) in tqdm(final_filtered_datasets.items(), desc="Computing the Survivor Functions"):
     
-    data = load_dataset(os.path.join(processed_dir, final_filtered_files[dataset_name]))[0] # load data & extract time stmaps
+    data = load_dataset(os.path.join(processed_dir, final_filtered_files[dataset_name]))[0] 
     sacc_start = data.get("sacc drinking session start time", 0)
     cta_time = data.get("CTA injection time", 0)
 
@@ -351,7 +299,7 @@ for dataset_name, (neurons, non_stimuli_time) in tqdm(final_filtered_datasets.it
             subfolder=dataset_subfolder,  
             neuron_label=neuron_label
         )
-        metrics_list.append(metrics)  # Collect the output for summary
+        metrics_list.append(metrics)
 
     # Summary function using the collected metrics
     plot_survivor_dataset_summary(
@@ -368,7 +316,7 @@ print("\nAll Survivor Functions have been plotted and saved.")
 """
 """
 
-1. Rasterplots + smoothed PSTH
+1. Rasterplots + smoothed PSTH (with moving average filter)
 2. 2x2 bar plots PSTHs + dataset summaries, with baseline subtraction and moving average filter = Y-Axis shows the diff btw baseline and evoked response
 
 """

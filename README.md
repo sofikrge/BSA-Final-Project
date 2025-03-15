@@ -1,9 +1,13 @@
 # BSA Final Project Denise Jaeschke & Sofia Karageorgiou
 
 If you want to run it for yourself, here is what you need to do:
+    
     - Make sure you have all dependencies installed. 
+    
     - Create the data folder and within it the raw folder.
+    
     - Place the raw recordings within the data/raw folder.
+    
     - Run the finalbsa.py file You can track the progress in the terminal and watch the code create the figures within the reports/figures folder.
 
 Note: If you are not simply copying this repo, please make sure to replicate the structure seen below to make sure the figures will be rendered 

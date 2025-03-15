@@ -1,14 +1,26 @@
 # BSA Final Project DJ & SK
 
-Our final project for BSA :-)
+Our final project for BSA 🥳
+
+If you want to run it for yourself, here is what you need to do:
+    - Make sure you have all dependencies installed. 
+    - Create the data folder and within it the raw folder.
+    - Place the raw recordings within the data/raw folder.
+    - Run the finalbsa.py file You can track the progress in the terminal and watch the code create the figures within the reports/figures folder.
+
+Note: If you are not simply copying this repo, please make sure to replicate the structure seen below to make sure the figures will be rendered 
+in the intended folder and the script has access to the raw data. The important folders and files you should double-check are marked with an emoji.
+
+Thank you and enjoy!
 
 ## Project Organization
 
 ```
-├── README.md          
-├── data               <- 👀 Please create this folder.
+├── README.md
+├── finalbsa.py        <- 🌱 This is the main file that you need to run          
+├── data               <- 🍄 Please create this folder.
 │   ├── processed      <- The final, data sets after exclusions.
-│   └── raw            <- 👀 Place the raw data we were provided with for the assignment here please 
+│   └── raw            <- 🍄 Place the raw data we were provided with for the assignment here please 
 ├── pyproject.toml     <- Project configuration file with package metadata for 
 │                         bsa_final_project_dj_&_sk and configuration for 
 ├── reports            <- General folder for the outputs of our analysis

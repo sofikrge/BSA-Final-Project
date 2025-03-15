@@ -1,7 +1,5 @@
 # BSA Final Project Denise Jaeschke & Sofia Karageorgiou
 
-Our final project for BSA 🥳
-
 If you want to run it for yourself, here is what you need to do:
     - Make sure you have all dependencies installed. 
     - Create the data folder and within it the raw folder.

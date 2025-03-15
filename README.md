@@ -1,4 +1,4 @@
-# BSA Final Project DJ & SK
+# BSA Final Project Denise Jaeschke & Sofia Karageorgiou
 
 Our final project for BSA 🥳
 

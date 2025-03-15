@@ -68,6 +68,7 @@ def analyze_variability(filtered_datasets, processed_dir, filtered_files, save_f
     rat_stats = []
     group_data = {"Control": {"Pre": {"CV": [], "FF": []}, "Post": {"CV": [], "FF": []}}, "Experimental": {"Pre": {"CV": [], "FF": []}, "Post": {"CV": [], "FF": []}}}
     rat_data = {}
+    group_mean = {"Control": {"Pre": {"CV_Mean": [], "CV_Std": [], "FF_Mean": [], "FF_Std": []}, "Post": {"CV_Mean": [], "CV_Std": [], "FF_Mean": [], "FF_Std": []}}, "Experimental": {"Pre": {"CV_Mean": [], "CV_Std": [], "FF_Mean": [], "FF_Std": []}, "Post": {"CV_Mean": [], "CV_Std": [], "FF_Mean": [], "FF_Std": []}}}
 
     # For global y-axis scaling (CV and Fano)
     cv_file_max_list = []
@@ -137,11 +138,21 @@ def analyze_variability(filtered_datasets, processed_dir, filtered_files, save_f
                 rat_data[dataset_name]["Pre"]["CV"].extend(cv_values)
                 group_data[group]["Pre"]["FF"].extend(fano_values)
                 rat_data[dataset_name]["Pre"]["FF"].extend(fano_values)
+                group_mean[group]["Pre"]["CV_Mean"].append(np.nanmean(cv_values))
+                group_mean[group]["Pre"]["CV_Std"].append(np.nanstd(cv_values))
+                group_mean[group]["Pre"]["FF_Mean"].append(np.nanmean(fano_values))
+                group_mean[group]["Pre"]["FF_Std"].append(np.nanstd(fano_values))
+
             elif window_name == "Post-CTA":
                 group_data[group]["Post"]["CV"].extend(cv_values)
                 rat_data[dataset_name]["Post"]["CV"].extend(cv_values)
                 group_data[group]["Post"]["FF"].extend(fano_values)
                 rat_data[dataset_name]["Post"]["FF"].extend(fano_values)
+                group_mean[group]["Post"]["CV_Mean"].append(np.nanmean(cv_values))
+                group_mean[group]["Post"]["CV_Std"].append(np.nanstd(cv_values))
+                group_mean[group]["Post"]["FF_Mean"].append(np.nanmean(fano_values))
+                group_mean[group]["Post"]["FF_Std"].append(np.nanstd(fano_values))
+
 
             # Store results per dataset
             results.append({
@@ -149,7 +160,9 @@ def analyze_variability(filtered_datasets, processed_dir, filtered_files, save_f
                 "Group": group,
                 "Time Window": window_name,
                 "CV Mean": np.nanmean(cv_values),
-                "Fano Mean": np.nanmean(fano_values)
+                "CV Std": np.nanstd(cv_values),
+                "Fano Mean": np.nanmean(fano_values),
+                "Fano Std": np.nanstd(fano_values)
             })
 
 
@@ -245,9 +258,12 @@ def analyze_variability(filtered_datasets, processed_dir, filtered_files, save_f
             w_stat_ff, p_w_ff = wilcoxon(pre_data_ff, post_data_ff, nan_policy='omit')
         else:
             t_stat_ff, p_t_ff, w_stat_ff, p_w_ff = np.nan, np.nan, np.nan, np.nan
+        
+        group = "Control" if "ctrl" in dataset_name.lower() else "Experimental"
 
         rat_stats.append({
             "Recording": rat,
+            "Group": group,
             "CV T-Test Stat": t_stat_cv,
             "CV T-Test P-Value": p_t_cv,
             "CV Wilcoxon Stat": w_stat_cv,
@@ -290,6 +306,29 @@ def analyze_variability(filtered_datasets, processed_dir, filtered_files, save_f
             "FF Wilcoxon P-Value": p_w_ff
         })
 
+    # Extract pre and post data for Control and Experimental groups
+    control_pre_cv = np.array(group_mean["Control"]["Pre"]["CV_Mean"])
+    control_post_cv = np.array(group_mean["Control"]["Post"]["CV_Mean"])
+    experimental_pre_cv = np.array(group_mean["Experimental"]["Pre"]["CV_Mean"])
+    experimental_post_cv = np.array(group_mean["Experimental"]["Post"]["CV_Mean"])
+
+    control_pre_ff = np.array(group_mean["Control"]["Pre"]["FF_Mean"])
+    control_post_ff = np.array(group_mean["Control"]["Post"]["FF_Mean"])
+    experimental_pre_ff = np.array(group_mean["Experimental"]["Pre"]["FF_Mean"])
+    experimental_post_ff = np.array(group_mean["Experimental"]["Post"]["FF_Mean"])
+
+    # Perform paired t-tests
+    cv_ttest_control = ttest_rel(control_pre_cv, control_post_cv, nan_policy='omit')
+    cv_ttest_experimental = ttest_rel(experimental_pre_cv, experimental_post_cv, nan_policy='omit')
+    ff_ttest_control = ttest_rel(control_pre_ff, control_post_ff, nan_policy='omit')
+    ff_ttest_experimental = ttest_rel(experimental_pre_ff, experimental_post_ff, nan_policy='omit')
+
+    # Perform Wilcoxon signed-rank tests
+    cv_wilcoxon_control = wilcoxon(control_pre_cv, control_post_cv, nan_policy='omit')
+    cv_wilcoxon_experimental = wilcoxon(experimental_pre_cv, experimental_post_cv, nan_policy='omit')
+    ff_wilcoxon_control = wilcoxon(control_pre_ff, control_post_ff, nan_policy='omit')
+    ff_wilcoxon_experimental = wilcoxon(experimental_pre_ff, experimental_post_ff, nan_policy='omit')
+
 
     # Set the y-axis scaling for CV plots to 0-20
     for ax in axs_cv.flatten():
@@ -299,14 +338,28 @@ def analyze_variability(filtered_datasets, processed_dir, filtered_files, save_f
     global_fano_ymax = max(max(fano_file_max_list), max(fano_group_max_list))
     for ax in axs_fano.flatten():
         ax.set_ylim(0, global_fano_ymax)
-    # Create group-level statistics DataFrame
-    print("\nGroup-level statistics:")
-    df_group_stats = pd.DataFrame(group_stats)
-    print(df_group_stats)
     # Convert results to DataFrame and display
     print("\nRat-level statistics:")
     df_file_stats = pd.DataFrame(rat_stats)
     print(df_file_stats)
+    # Create group-level statistics DataFrame
+    print("\nGroup-level statistics (treating neurons as single data points:):")
+    df_group_stats = pd.DataFrame(group_stats)
+    print(df_group_stats)
+    print("\nGroup-level statistics (treating rats as single data points:):")
+    print("Paired T-Test Results:")
+    print(f"Control CV: t={cv_ttest_control.statistic}, p={cv_ttest_control.pvalue}")
+    print(f"Experimental CV: t={cv_ttest_experimental.statistic}, p={cv_ttest_experimental.pvalue}")
+    print(f"Control FF: t={ff_ttest_control.statistic}, p={ff_ttest_control.pvalue}")
+    print(f"Experimental FF: t={ff_ttest_experimental.statistic}, p={ff_ttest_experimental.pvalue}")
+
+    print("\nWilcoxon Test Results:")
+    print(f"Control CV: W={cv_wilcoxon_control.statistic}, p={cv_wilcoxon_control.pvalue}")
+    print(f"Experimental CV: W={cv_wilcoxon_experimental.statistic}, p={cv_wilcoxon_experimental.pvalue}")
+    print(f"Control FF: W={ff_wilcoxon_control.statistic}, p={ff_wilcoxon_control.pvalue}")
+    print(f"Experimental FF: W={ff_wilcoxon_experimental.statistic}, p={ff_wilcoxon_experimental.pvalue}")
+
+
 
     # Save figures
     fig_cv.suptitle("CV of ISIs Across Time Windows and Recordings (File & Group Level)", fontsize=16)

@@ -115,6 +115,43 @@ def analyze_firing_rates(filtered_datasets, filtered_files, processed_dir, save_
         except Exception as e:
             print(f"Error processing {dataset_name}: {e}")
     
+    summary_df = pd.DataFrame(summary_stats)
+    
+    # Ensure each rat is analyzed instead of neurons
+    rat_level_df = summary_df.groupby(["Recording", "Group"]).mean().reset_index()
+    
+    # Separate groups
+    control_rats = rat_level_df[rat_level_df["Group"] == "Control"]
+    experimental_rats = rat_level_df[rat_level_df["Group"] == "Experimental"]
+    
+    # Paired statistical tests at the rat level
+    if len(control_rats) > 1:
+        t_stat_ctrl, p_t_ctrl = ttest_rel(control_rats["Pre-CTA Mean"], control_rats["Post-CTA Mean"])
+        w_stat_ctrl, p_w_ctrl = wilcoxon(control_rats["Pre-CTA Mean"], control_rats["Post-CTA Mean"])
+    else:
+        t_stat_ctrl, p_t_ctrl, w_stat_ctrl, p_w_ctrl = np.nan, np.nan, np.nan, np.nan
+    
+    if len(experimental_rats) > 1:
+        t_stat_exp, p_t_exp = ttest_rel(experimental_rats["Pre-CTA Mean"], experimental_rats["Post-CTA Mean"])
+        w_stat_exp, p_w_exp = wilcoxon(experimental_rats["Pre-CTA Mean"], experimental_rats["Post-CTA Mean"])
+    else:
+        t_stat_exp, p_t_exp, w_stat_exp, p_w_exp = np.nan, np.nan, np.nan, np.nan
+    
+    group_results_new = pd.DataFrame({
+        "Group": ["Experimental", "Control"],
+        "T-Test Stat": [t_stat_exp, t_stat_ctrl],
+        "P-Value (t-test)": [p_t_exp, p_t_ctrl],
+        "Wilcoxon Stat": [w_stat_exp, w_stat_ctrl],
+        "P-Value (wilcox)": [p_w_exp, p_w_ctrl]
+    })
+    
+    # Group-level summary statistics
+    group_summary_new = rat_level_df.groupby("Group")[
+        ["Non-Stimuli Mean", "Pre-CTA Mean", "Post-CTA Mean"]].mean()
+    group_std = rat_level_df.groupby("Group")[
+        ["Non-Stimuli Mean", "Pre-CTA Mean", "Post-CTA Mean"]].std()
+    group_std.columns = ["Non-Stimuli Std", "Pre-CTA Std", "Post-CTA Std"]
+    
     # Further Group based processing
     if len(pre_ctrl) > 1 and len(post_ctrl) > 1:
         t_exp, p_t_exp = ttest_rel(pre_ctrl, post_ctrl)
@@ -219,7 +256,9 @@ def analyze_firing_rates(filtered_datasets, filtered_files, processed_dir, save_
     # Print the summary stats for debugging
     print("Final summary of firing rates:")
     print(summary_df.head())
-    print("\nGroup-level summary of firing rates (Control vs Experimental):")
+    print("\nGroup-level summary of firing rates (Control vs Experimental) treating neurons as single data points:")
     print(group_summary)
-    print("\nGroup-level test of firing rates (Pre vs Post):")
+    print("\nGroup-level test of firing rates (Pre vs Post) treating neurons as single data points:")
     print(group_results)
+    print("\nGroup-level test of firing rates (Pre vs Post) treating rats as single data points:")
+    print(group_results_new)

@@ -40,7 +40,7 @@ def correlogram(t1, t2=None, binsize=.0004, limit=.02, auto=False, normalize=Tru
     t1 = np.sort(t1)
     t2 = np.sort(t2)
 
-    # Create histogram bins
+    # create histogram bins
     num_bins = int(2 * limit / binsize) # total width spans from -limit to + limit so 2*limit
     if num_bins % 2 == 0: # force odd number of bins for single center bin
         num_bins += 1
@@ -50,18 +50,19 @@ def correlogram(t1, t2=None, binsize=.0004, limit=.02, auto=False, normalize=Tru
     ii2 = np.searchsorted(t2, t1 - limit)
     jj2 = np.searchsorted(t2, t1 + limit)
 
-    big = np.concatenate([t2[i:j] - t for t, i, j in zip(t1, ii2, jj2)]) # for every spike take corresponding segment, compute differences to get time lags between spike t and nearby spikes
+    # for every spike take corresponding segment, compute diffs to get time lags between spike t and nearby spikes
+    big = np.concatenate([t2[i:j] - t for t, i, j in zip(t1, ii2, jj2)])
 
     # bin differences
     count, bins = np.histogram(big, bins=bins)
 
     # in auto-corr each spike has a zero lag with itself, creating artifical peak at zero
-    # fix this by setting the zero bin to zero
+    # fix this by sutracting the no of self-spikes from the 0 bin
     # Remove self-spike bias for autocorrelograms.
     if auto:
         self_differences = np.zeros(len(t1))
-        self_hist, _ = np.histogram(self_differences, bins=bins)
-        bin_containing_zero = np.nonzero(self_hist)[0][0]
+        self_hist, _ = np.histogram(self_differences, bins=bins) 
+        bin_containing_zero = np.nonzero(self_hist)[0][0] 
         # Subtract the self-spike count (one per spike)
         count[bin_containing_zero] = max(count[bin_containing_zero] - len(t1), 0)
 

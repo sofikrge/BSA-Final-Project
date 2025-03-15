@@ -42,7 +42,7 @@ def apply_manual_modification(datasets, manual_fusion, manual_deletion, file_map
                              if idx not in deletion_indices and idx not in fusion_indices]
         # print(f"Remaining neurons count (excluding deletion/fusion): {len(remaining_neurons)}")
 
-        # Fuse neurons explicitly
+        # Fuse neurons
         fused_neurons = []
         for group in valid_fusion_groups:
             print(f"Fusing neuron group: {group}")

@@ -16,13 +16,13 @@ Thank you and enjoy!
 ```
 ├── README.md
 ├── finalbsa.py        <- 🌱 This is the main file that you need to run          
-├── data               <- 🍄 Please create this folder.
-│   ├── processed      <- The final, data sets after exclusions.
-│   └── raw            <- 🍄 Place the raw data we were provided with for the assignment here please 
+├── data               <- 🍄 Please create this folder
+│   ├── processed      <- The final, data sets after exclusions
+│   └── raw            <- 🍄 Create this folder and place the raw data we were provided with for the assignment here please 
 ├── pyproject.toml     <- Project configuration file with package metadata for 
 │                         bsa_final_project_dj_&_sk and configuration for 
 ├── reports            <- General folder for the outputs of our analysis
-│   └── figures        <- You will find all figure folders within this one. You do not have to create all the folders within this one, they will be generated automatically. 
+│   └── figures        <- You will find all figure folders within this one. You do not have to create all the folders within this one, they will be generated automatically 
 │       └── Correlograms
 │       └── CV_FF
 │       └── Firing_Rates

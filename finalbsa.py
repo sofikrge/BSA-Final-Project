@@ -340,7 +340,7 @@ for dataset_name, (neurons, non_stimuli_time) in tqdm(final_filtered_datasets.it
     cta_time = data.get("CTA injection time", None)
     # print(f"{dataset_name}: CTA time: {cta_time}")
     
-    psth_data, psth_data_filtered = psth_raster(
+    psth_results = psth_raster(
         dataset_name,
         neurons,
         water_events,
@@ -349,8 +349,8 @@ for dataset_name, (neurons, non_stimuli_time) in tqdm(final_filtered_datasets.it
         save_folder=psthfigures_dir
     )
     
-    psth_data_map[dataset_name] = psth_data
-    psth_group_data[dataset_name] = psth_data_filtered
+    psth_data_map[dataset_name] = psth_results
+    psth_group_data[dataset_name] = psth_results
 
 # Group the datasets
 control_group = [psth_group_data[name] for name in psth_group_data if "ctrl" in name]

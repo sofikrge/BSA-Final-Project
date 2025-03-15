@@ -29,7 +29,6 @@ def plot_neuron_rasters_2x2(group_name, neurons, water_events, sugar_events, cta
 
     def compute_spike_histogram(neuron, events, window=(-1, 2), bin_width=0.05, baseline_window=(-1, 0), smooth=True):
         """Compute a histogram-like spike count across event-aligned windows with baseline subtraction."""
-        
         num_bins = int((window[1] - window[0]) / bin_width)
         bins = np.linspace(window[0], window[1], num_bins + 1, endpoint=True)  # Ensure exact bin alignment
         bin_centers = bins[:-1] + (bin_width / 2)  # Ensure bin centers are correct
